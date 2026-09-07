@@ -1,0 +1,6 @@
+{
+  "name": "PRD Generator",
+  "description": "Dari ide 1 kalimat jadi PRD matang lewat wawancara terstruktur. Dilengkapi ERD, SQL Schema, Task List, dan Arsitektur Sistem.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

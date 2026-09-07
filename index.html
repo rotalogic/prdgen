@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="id" class="dark scroll-smooth">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>
+      // Defensive shim: Ensure window.fetch has both a getter and setter
+      // Prevents "Cannot set property fetch of #<Window> which has only a getter"
+      // when scripts or polyfills attempt assignment in strict mode.
+      (function() {
+        try {
+          var _fetch = window.fetch;
+          if (_fetch) {
+            var currentFetch = _fetch;
+            var descriptor = {
+              get: function() { return currentFetch; },
+              set: function(val) { currentFetch = val; },
+              configurable: true,
+              enumerable: true
+            };
+            try { Object.defineProperty(window, 'fetch', descriptor); } catch (_) {}
+            if (typeof Window !== 'undefined' && Window.prototype) {
+              try { Object.defineProperty(Window.prototype, 'fetch', descriptor); } catch (_) {}
+            }
+          }
+        } catch (_) {}
+      })();
+    </script>
+    <title>PRD Generator — Generator Spesifikasi Teknis &amp; Basis Data | RotaLogic</title>
+    <meta name="description" content="Dari ide 1 kalimat jadi PRD matang lewat wawancara terstruktur. Dilengkapi ERD, SQL Schema, Task List, dan Arsitektur Sistem." />
+    <meta property="og:title" content="PRD Generator — Generator Spesifikasi Teknis &amp; Basis Data | RotaLogic" />
+    <meta property="og:description" content="Dari ide 1 kalimat jadi PRD matang lewat wawancara terstruktur. Dilengkapi ERD, SQL Schema, Task List, dan Arsitektur Sistem." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700;800&display=swap" rel="stylesheet" />
+  </head>
+  <body class="bg-[#070A12] text-slate-100 min-h-screen antialiased selection:bg-[#F2542D] selection:text-white">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+

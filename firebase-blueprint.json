@@ -1,0 +1,27 @@
+{
+  "entities": {
+    "UserProfile": {
+      "collection": "users",
+      "description": "User profile data stored upon sign in",
+      "fields": {
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "lastLoginAt": { "type": "string" }
+      }
+    },
+    "PrdDraft": {
+      "collection": "drafts",
+      "description": "User saved PRD drafts and generated PRDs",
+      "fields": {
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "productType": { "type": "string" },
+        "updatedAt": { "type": "string" },
+        "currentStep": { "type": "string" },
+        "interviewData": { "type": "map" }
+      }
+    }
+  }
+}
