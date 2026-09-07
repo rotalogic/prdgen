@@ -633,16 +633,18 @@ ${result.tasks.map(t => `- [${t.completed ? 'x' : ' '}] [${t.priority}] ${t.titl
         </div>
       )}
 
-      {/* Floating Wallpaper Control Bar & Quick Backup Revert */}
-      <WallpaperControls
-        mode={backgroundMode}
-        onSetMode={handleSetBackgroundMode}
-        customImageUrl={customBgImage}
-        onUploadCustomImage={handleUploadCustomImage}
-        onResetToOriginal={handleResetToOriginal}
-        dimOpacity={dimOpacity}
-        onChangeDim={handleChangeDim}
-      />
+      {/* Floating Wallpaper Control Bar & Quick Backup Revert — hanya untuk pengguna yang sudah masuk */}
+      {isLoggedIn && (
+        <WallpaperControls
+          mode={backgroundMode}
+          onSetMode={handleSetBackgroundMode}
+          customImageUrl={customBgImage}
+          onUploadCustomImage={handleUploadCustomImage}
+          onResetToOriginal={handleResetToOriginal}
+          dimOpacity={dimOpacity}
+          onChangeDim={handleChangeDim}
+        />
+      )}
 
       {/* Modals & Dialogs */}
       <DocsModal isOpen={isDocsOpen} onClose={() => setIsDocsOpen(false)} />

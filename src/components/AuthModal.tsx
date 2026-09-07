@@ -1,15 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  X, 
-  Mail, 
-  Lock, 
-  User as UserIcon, 
-  Eye, 
-  EyeOff, 
-  AlertCircle, 
-  CheckCircle2, 
+import {
+  X,
+  Mail,
+  Lock,
+  User as UserIcon,
+  Eye,
+  EyeOff,
+  AlertCircle,
+  CheckCircle2,
   ArrowRight,
-  Sparkles,
   ShieldCheck,
   RefreshCw
 } from 'lucide-react';
@@ -150,9 +149,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       id="auth-modal-overlay"
       className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200"
     >
-      <div 
+      <div
         id="auth-modal"
-        className="w-full max-w-md bg-[#0E1526] border border-slate-700/90 rounded-2xl shadow-2xl p-6 text-slate-100 relative space-y-4 max-h-[92vh] overflow-y-auto"
+        className="w-full max-w-md bg-[#0E1526] border border-slate-700/90 rounded-2xl shadow-2xl px-6 py-8 text-slate-100 relative space-y-6 max-h-[92vh] overflow-y-auto"
       >
         {/* Close Button */}
         {!preventClose && (
@@ -168,20 +167,20 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         )}
 
         {/* Modal Header */}
-        <div className="text-center space-y-1.5 pt-1">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#F2542D] to-amber-500 text-white shadow-lg shadow-[#F2542D]/20 mb-1">
-            <Sparkles className="w-6 h-6" />
+        <div className="text-center flex flex-col items-center gap-y-3 pt-1">
+          <img src="/assets/brand/rotalogic-logo.png" alt="RotaLogic" className="h-9 w-auto" />
+          <div className="space-y-1.5">
+            <h2 className="text-xl font-bold font-display text-white tracking-tight">
+              {title || (mode === 'register' ? 'Daftar Akun RotaLogic' : mode === 'login' ? 'Masuk ke RotaLogic' : 'Atur Ulang Kata Sandi')}
+            </h2>
+            <p className="text-xs text-slate-400 max-w-xs mx-auto">
+              {description || (mode === 'register'
+                ? 'Daftar dengan email Anda untuk mulai menyusun PRD & menyimpan progres arsitektur.'
+                : mode === 'login'
+                ? 'Masuk untuk mengakses draf PRD, rekomendasi arsitektur, dan ekspor dokumen.'
+                : 'Masukkan email Anda untuk menerima instruksi reset kata sandi.')}
+            </p>
           </div>
-          <h2 className="text-xl font-bold font-display text-white tracking-tight">
-            {title || (mode === 'register' ? 'Daftar Akun RotaLogic' : mode === 'login' ? 'Masuk ke RotaLogic' : 'Atur Ulang Kata Sandi')}
-          </h2>
-          <p className="text-xs text-slate-400 max-w-xs mx-auto">
-            {description || (mode === 'register' 
-              ? 'Daftar dengan email Anda untuk mulai menyusun PRD & menyimpan progres arsitektur.'
-              : mode === 'login'
-              ? 'Masuk untuk mengakses draf PRD, rekomendasi arsitektur, dan ekspor dokumen.'
-              : 'Masukkan email Anda untuk menerima instruksi reset kata sandi.')}
-          </p>
         </div>
 
         {/* Mode Switcher Tabs (Only if not in forgot password mode) */}

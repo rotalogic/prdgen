@@ -216,45 +216,48 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* Right Header Navigation & Actions */}
       <div className="flex items-center gap-4 sm:gap-6">
-        <button
-          onClick={onOpenDocs}
-          className="text-xs font-medium text-slate-400 hover:text-white transition-colors"
-          type="button"
-        >
-          Docs
-        </button>
+        {/* Docs, Changelog, Kunci AI & Pengaturan — hanya untuk pengguna yang sudah masuk */}
+        {isLoggedIn && (
+          <>
+            <button
+              onClick={onOpenDocs}
+              className="text-xs font-medium text-slate-400 hover:text-white transition-colors"
+              type="button"
+            >
+              Docs
+            </button>
 
-        <button
-          onClick={onOpenChangelog}
-          className="text-xs font-medium text-slate-400 hover:text-white transition-colors"
-          type="button"
-        >
-          Changelog
-        </button>
+            <button
+              onClick={onOpenChangelog}
+              className="text-xs font-medium text-slate-400 hover:text-white transition-colors"
+              type="button"
+            >
+              Changelog
+            </button>
 
-        {/* AI Key Dialog Trigger Button */}
-        {onOpenApiKeyDialog && (
-          <button
-            onClick={onOpenApiKeyDialog}
-            aria-label="Konfigurasi Kunci AI"
-            className="p-1.5 rounded-lg text-slate-400 hover:text-amber-300 hover:bg-amber-500/10 transition-all border border-transparent hover:border-amber-500/20 cursor-pointer"
-            type="button"
-            title="Kunci AI (Gemini, Claude, GPT & Custom)"
-          >
-            <Key className="w-4 h-4 text-amber-400/90" />
-          </button>
+            {onOpenApiKeyDialog && (
+              <button
+                onClick={onOpenApiKeyDialog}
+                aria-label="Konfigurasi Kunci AI"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-amber-300 hover:bg-amber-500/10 transition-all border border-transparent hover:border-amber-500/20 cursor-pointer"
+                type="button"
+                title="Kunci AI (Gemini, Claude, GPT & Custom)"
+              >
+                <Key className="w-4 h-4 text-amber-400/90" />
+              </button>
+            )}
+
+            <button
+              onClick={onOpenSettings}
+              aria-label="Settings"
+              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/[0.06] transition-all border border-transparent hover:border-white/10 cursor-pointer"
+              type="button"
+              title="Pengaturan & Preferensi"
+            >
+              <Settings className="w-4 h-4" />
+            </button>
+          </>
         )}
-
-        {/* Settings Button */}
-        <button
-          onClick={onOpenSettings}
-          aria-label="Settings"
-          className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/[0.06] transition-all border border-transparent hover:border-white/10 cursor-pointer"
-          type="button"
-          title="Pengaturan & Preferensi"
-        >
-          <Settings className="w-4 h-4" />
-        </button>
 
         {/* User Account / Auth Section */}
         {isLoggedIn ? (
