@@ -1,13 +1,21 @@
 import { Pool } from 'pg';
+import fs from 'fs';
+import path from 'path';
 
 // Server-only. Shared Postgres pool for both Better Auth (see lib/auth.ts)
 // and our own app tables below — same database, one pool.
 const databaseUrl = process.env.DATABASE_URL || '';
 const isLocalDatabase = /localhost|127\.0\.0\.1/.test(databaseUrl);
 
+// Full certificate verification (Postgres "verify-full" equivalent) against
+// Supabase's CA — not just opportunistic TLS. rejectUnauthorized:false would
+// accept any certificate, including an attacker's, silently.
+const supabaseCaPath = path.join(process.cwd(), 'certs', 'supabase-ca.crt');
+const supabaseCa = isLocalDatabase ? undefined : fs.readFileSync(supabaseCaPath, 'utf8');
+
 export const pool = new Pool({
   connectionString: databaseUrl,
-  ssl: isLocalDatabase ? undefined : { rejectUnauthorized: false },
+  ssl: isLocalDatabase ? undefined : { rejectUnauthorized: true, ca: supabaseCa },
 });
 
 // Idempotent — safe to call on every server start. Better Auth owns
