@@ -18,6 +18,20 @@ export const auth = betterAuth({
     enabled: true,
     minPasswordLength: 6,
   },
+  account: {
+    accountLinking: {
+      enabled: true,
+      trustedProviders: ['google'],
+      // We don't implement an email-verification flow, so every
+      // password-signup account has emailVerified:false. Better Auth's
+      // default (true) would then refuse to link a Google sign-in to an
+      // existing email/password account of the same address — the user
+      // would land back on the homepage with no session and no visible
+      // error, since the failure happens mid-redirect, not in a request
+      // our own error handling ever sees.
+      requireLocalEmailVerified: false,
+    },
+  },
   socialProviders: isGoogleAuthConfigured
     ? {
         google: {
