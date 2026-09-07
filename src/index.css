@@ -4,9 +4,15 @@
   --color-brand: #F2542D;
   --color-brand-hover: #ff6742;
   --color-brand-dark: #070A12;
-  --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-  --font-display: 'Space Grotesk', system-ui, -apple-system, sans-serif;
+  --font-sans: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --font-display: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+/* Single-family typography: JetBrains Mono everywhere. Body copy gets extra
+   line-height since monospace runs tighter than a humanist sans at length. */
+body {
+  line-height: 1.65;
 }
 
 /* Atmospheric Mountain & Horizon Glow */

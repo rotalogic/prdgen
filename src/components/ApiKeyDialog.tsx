@@ -61,19 +61,19 @@ const CUSTOM_PRESETS = [
   {
     name: 'DeepSeek',
     baseUrl: 'https://api.deepseek.com/v1',
-    model: 'deepseek-chat',
+    model: 'deepseek-v4-flash',
     note: 'Kinerja tinggi dengan biaya ekonomis',
   },
   {
     name: 'Groq',
     baseUrl: 'https://api.groq.com/openai/v1',
-    model: 'llama-3.3-70b-versatile',
+    model: 'openai/gpt-oss-120b',
     note: 'Kecepatan inferensi ultra-cepat',
   },
   {
     name: 'OpenRouter',
     baseUrl: 'https://openrouter.ai/api/v1',
-    model: 'anthropic/claude-3.5-sonnet',
+    model: 'anthropic/claude-sonnet-5',
     note: 'Akses ratusan model AI dalam 1 kunci',
   },
   {
@@ -335,13 +335,16 @@ export const ApiKeyDialog: React.FC<ApiKeyDialogProps> = ({
               <div className="space-y-1">
                 <label className="text-[11px] text-slate-300 font-medium">Model Gemini</label>
                 <select
-                  value={model || 'gemini-2.5-flash'}
+                  value={model || 'gemini-3.8-flash'}
                   onChange={(e) => setModel(e.target.value)}
                   className="w-full bg-[#080C16] border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-[#F2542D]"
                 >
-                  <option value="gemini-2.5-flash">Gemini 2.5 Flash (Direkomendasikan - Cepat &amp; Tajam)</option>
-                  <option value="gemini-2.5-pro">Gemini 2.5 Pro (Penalaran Mendalam)</option>
-                  <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
+                  <option value="gemini-3.8-flash">Gemini 3.8 Flash (Direkomendasikan - Cepat &amp; Tajam)</option>
+                  <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro (Penalaran Paling Dalam)</option>
+                  <option value="gemini-3.6-flash">Gemini 3.6 Flash (Seimbang)</option>
+                  <option value="gemini-3.5-flash-lite">Gemini 3.5 Flash-Lite (Paling Hemat)</option>
+                  <option value="gemini-2.5-pro">Gemini 2.5 Pro (Generasi Sebelumnya)</option>
+                  <option value="gemini-2.5-flash">Gemini 2.5 Flash (Generasi Sebelumnya)</option>
                 </select>
               </div>
 
@@ -402,13 +405,16 @@ export const ApiKeyDialog: React.FC<ApiKeyDialogProps> = ({
               <div className="space-y-1">
                 <label className="text-[11px] text-slate-300 font-medium">Model OpenAI</label>
                 <select
-                  value={model || 'gpt-4o-mini'}
+                  value={model || 'gpt-5.6-terra'}
                   onChange={(e) => setModel(e.target.value)}
                   className="w-full bg-[#080C16] border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-[#F2542D]"
                 >
-                  <option value="gpt-4o-mini">GPT-4o mini (Direkomendasikan - Cepat &amp; Hemat Biaya)</option>
-                  <option value="gpt-4o">GPT-4o (Kemampuan Analisis Maksimal)</option>
-                  <option value="o3-mini">o3-mini (Penalaran &amp; Logika)</option>
+                  <option value="gpt-5.6-terra">GPT-5.6 Terra (Direkomendasikan - Seimbang)</option>
+                  <option value="gpt-6-astra">GPT-6 Astra (Kemampuan Analisis Maksimal)</option>
+                  <option value="gpt-5.6-sol">GPT-5.6 Sol (Kerja Profesional Kompleks)</option>
+                  <option value="gpt-5.6-luna">GPT-5.6 Luna (Paling Hemat Biaya)</option>
+                  <option value="gpt-4o">GPT-4o (Generasi Sebelumnya)</option>
+                  <option value="gpt-4o-mini">GPT-4o mini (Generasi Sebelumnya)</option>
                 </select>
               </div>
 
@@ -469,12 +475,14 @@ export const ApiKeyDialog: React.FC<ApiKeyDialogProps> = ({
               <div className="space-y-1">
                 <label className="text-[11px] text-slate-300 font-medium">Model Claude</label>
                 <select
-                  value={model || 'claude-3-5-sonnet-20241022'}
+                  value={model || 'claude-sonnet-5'}
                   onChange={(e) => setModel(e.target.value)}
                   className="w-full bg-[#080C16] border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-[#F2542D]"
                 >
-                  <option value="claude-3-5-sonnet-20241022">Claude 3.5 Sonnet (Direkomendasikan - Kualitas Tinggi)</option>
-                  <option value="claude-3-5-haiku-20241022">Claude 3.5 Haiku (Respons Cepat)</option>
+                  <option value="claude-sonnet-5">Claude Sonnet 5 (Direkomendasikan - Seimbang)</option>
+                  <option value="claude-opus-5">Claude Opus 5 (Kualitas Tertinggi)</option>
+                  <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5 (Respons Tercepat)</option>
+                  <option value="claude-fable-5-1">Claude Fable 5.1 (Varian Terbaru)</option>
                 </select>
               </div>
 

@@ -1,18 +1,19 @@
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { 
-  User, 
-  onAuthStateChanged, 
-  signInWithPopup, 
-  signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword, 
-  updateProfile, 
-  sendPasswordResetEmail, 
-  signOut 
-} from 'firebase/auth';
-import { auth, googleProvider, syncUserProfile } from '../lib/firebase';
+import React, { createContext, useContext, ReactNode } from 'react';
+import { authClient, useSession } from '../lib/auth-client';
+
+// Compatibility shape kept identical to what the rest of the app already
+// reads (uid/displayName/photoURL), so Header/HeroView/Modals/App.tsx don't
+// need to change just because the auth provider underneath changed.
+export interface AppUser {
+  uid: string;
+  email: string;
+  displayName: string;
+  photoURL: string;
+  providerData: { providerId: string }[];
+}
 
 interface AuthContextType {
-  user: User | null;
+  user: AppUser | null;
   loading: boolean;
   isLoggedIn: boolean;
   loginWithGoogle: () => Promise<void>;
@@ -26,115 +27,101 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function formatAuthError(error: any): string {
-  const code = error?.code || '';
-  const message = error?.message || '';
+  const status = error?.status;
+  const message: string = error?.message || '';
+  const lower = message.toLowerCase();
 
-  switch (code) {
-    case 'auth/invalid-credential':
-    case 'auth/wrong-password':
-    case 'auth/user-not-found':
-      return 'Email atau kata sandi tidak cocok. Silakan periksa kembali.';
-    case 'auth/email-already-in-use':
-      return 'Email ini sudah terdaftar. Silakan gunakan tab Masuk atau reset kata sandi.';
-    case 'auth/invalid-email':
-      return 'Format email tidak valid. Harap masukkan alamat email yang benar.';
-    case 'auth/weak-password':
-      return 'Kata sandi terlalu pendek. Masukkan minimal 6 karakter.';
-    case 'auth/popup-closed-by-user':
-      return 'Jendela masuk Google ditutup sebelum proses selesai. Silakan coba kembali.';
-    case 'auth/popup-blocked':
-      return 'Peramban memblokir jendela popup masuk Google. Izinkan popup untuk situs ini lalu coba lagi.';
-    case 'auth/too-many-requests':
-      return 'Terlalu banyak percobaan gagal. Silakan tunggu beberapa saat atau atur ulang kata sandi.';
-    case 'auth/network-request-failed':
-      return 'Gagal terhubung ke jaringan. Periksa koneksi internet Anda.';
-    default:
-      if (message.includes('popup')) {
-        return 'Jendela popup masuk dibatalkan atau ditutup.';
-      }
-      return message || 'Terjadi kendala autentikasi. Silakan coba lagi.';
+  if (lower.includes('invalid email or password') || lower.includes('invalid credentials') || status === 401) {
+    return 'Email atau kata sandi tidak cocok. Silakan periksa kembali.';
   }
+  if (lower.includes('already exist') || lower.includes('already registered') || lower.includes('already in use')) {
+    return 'Email ini sudah terdaftar. Silakan gunakan tab Masuk atau reset kata sandi.';
+  }
+  if (lower.includes('password') && (lower.includes('short') || lower.includes('length'))) {
+    return 'Kata sandi terlalu pendek. Masukkan minimal 6 karakter.';
+  }
+  if (lower.includes('invalid email') || lower.includes('email is invalid')) {
+    return 'Format email tidak valid. Harap masukkan alamat email yang benar.';
+  }
+  if (lower.includes('google') && (lower.includes('not') || lower.includes('provider'))) {
+    return 'Google sign-in belum dikonfigurasi. Gunakan email dan kata sandi untuk saat ini.';
+  }
+  if (lower.includes('fetch') || lower.includes('network')) {
+    return 'Gagal terhubung ke server. Periksa koneksi internet Anda.';
+  }
+  if (status === 429) {
+    return 'Terlalu banyak percobaan gagal. Silakan tunggu beberapa saat lalu coba lagi.';
+  }
+  if (status === 503 || status >= 500) {
+    return 'Server autentikasi sedang tidak bisa diakses. Coba lagi dalam beberapa saat.';
+  }
+
+  return message || 'Terjadi kendala autentikasi. Silakan coba lagi.';
 }
 
+function toAppUser(sessionUser: any): AppUser | null {
+  if (!sessionUser) return null;
+  return {
+    uid: sessionUser.id,
+    email: sessionUser.email || '',
+    displayName: sessionUser.name || (sessionUser.email ? sessionUser.email.split('@')[0] : 'User'),
+    photoURL: sessionUser.image || '',
+    // Google isn't wired in yet — every account here is email/password.
+    providerData: [{ providerId: 'password' }],
+  };
+}
+
+// Better Auth's client infers session/user shape generically from the base
+// options type, which doesn't resolve concretely without wiring the server
+// auth type through the whole build — more plumbing than this app needs, so
+// we type just the fields we actually read.
+type SessionUser = { id: string; email?: string | null; name?: string | null; image?: string | null };
+
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      setUser(currentUser);
-      setLoading(false);
-
-      if (currentUser) {
-        // Sync profile to Firestore asynchronously
-        syncUserProfile(currentUser).catch((err) => {
-          console.warn('Sync profile warning:', err);
-        });
-      }
-    });
-
-    return () => unsubscribe();
-  }, []);
+  const { data: session, isPending } = useSession() as unknown as {
+    data: { user: SessionUser } | null;
+    isPending: boolean;
+  };
+  const user = toAppUser(session?.user);
 
   const loginWithGoogle = async () => {
-    try {
-      const result = await signInWithPopup(auth, googleProvider);
-      if (result.user) {
-        await syncUserProfile(result.user);
-      }
-    } catch (error) {
-      throw error;
-    }
+    const { error } = await authClient.signIn.social({ provider: 'google', callbackURL: window.location.href });
+    if (error) throw error;
   };
 
   const loginWithEmail = async (email: string, pass: string) => {
-    try {
-      const result = await signInWithEmailAndPassword(auth, email.trim(), pass);
-      if (result.user) {
-        await syncUserProfile(result.user);
-      }
-    } catch (error) {
-      throw error;
-    }
+    const { error } = await authClient.signIn.email({ email: email.trim(), password: pass });
+    if (error) throw error;
   };
 
   const registerWithEmail = async (email: string, pass: string, name?: string) => {
-    try {
-      const result = await createUserWithEmailAndPassword(auth, email.trim(), pass);
-      if (result.user && name && name.trim()) {
-        await updateProfile(result.user, {
-          displayName: name.trim(),
-        });
-      }
-      if (result.user) {
-        await syncUserProfile(result.user);
-      }
-    } catch (error) {
-      throw error;
-    }
+    const cleanEmail = email.trim();
+    const { error } = await authClient.signUp.email({
+      email: cleanEmail,
+      password: pass,
+      name: name && name.trim() ? name.trim() : cleanEmail.split('@')[0],
+    });
+    if (error) throw error;
   };
 
   const resetPassword = async (email: string) => {
-    try {
-      await sendPasswordResetEmail(auth, email.trim());
-    } catch (error) {
-      throw error;
-    }
+    const { error } = await authClient.requestPasswordReset({
+      email: email.trim(),
+      redirectTo: `${window.location.origin}/`,
+    });
+    if (error) throw error;
   };
 
   const logout = async () => {
-    try {
-      await signOut(auth);
-    } catch (error) {
-      throw error;
-    }
+    const { error } = await authClient.signOut({});
+    if (error) throw error;
   };
 
   return (
     <AuthContext.Provider
       value={{
         user,
-        loading,
+        loading: isPending,
         isLoggedIn: Boolean(user),
         loginWithGoogle,
         loginWithEmail,

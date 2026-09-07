@@ -1,67 +1,23 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { 
-  getAuth, 
-  GoogleAuthProvider, 
-  signInWithPopup, 
-  createUserWithEmailAndPassword, 
-  signInWithEmailAndPassword, 
-  signOut, 
-  updateProfile,
-  sendPasswordResetEmail,
-  onAuthStateChanged,
-  User
-} from 'firebase/auth';
-import { 
-  getFirestore, 
-  doc, 
-  setDoc, 
-  getDoc, 
-  collection, 
-  query, 
-  where, 
-  getDocs, 
-  deleteDoc,
-  serverTimestamp 
+import {
+  getFirestore,
+  doc,
+  setDoc,
+  getDoc,
+  serverTimestamp
 } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
 
-// Initialize Firebase App instance safely (singleton)
+// Firebase is used only for Firestore draft storage now — auth moved to
+// Better Auth (see src/lib/auth.ts and src/contexts/AuthContext.tsx).
 export const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
-// Initialize Firebase Auth
-export const auth = getAuth(app);
-
 // Initialize Cloud Firestore with the provisioned database ID
-export const db = firebaseConfig.firestoreDatabaseId 
+export const db = firebaseConfig.firestoreDatabaseId
   ? getFirestore(app, firebaseConfig.firestoreDatabaseId)
   : getFirestore(app);
 
-// Google Auth Provider setup
-export const googleProvider = new GoogleAuthProvider();
-googleProvider.setCustomParameters({
-  prompt: 'select_account',
-});
-
-// Helper: Sync / create user profile document in Firestore
-export async function syncUserProfile(user: User) {
-  if (!user || !user.uid) return;
-  try {
-    const userRef = doc(db, 'users', user.uid);
-    await setDoc(userRef, {
-      uid: user.uid,
-      email: user.email || '',
-      displayName: user.displayName || (user.email ? user.email.split('@')[0] : 'User'),
-      photoURL: user.photoURL || '',
-      providerId: user.providerData?.[0]?.providerId || 'password',
-      lastLoginAt: new Date().toISOString(),
-      updatedAt: serverTimestamp(),
-    }, { merge: true });
-  } catch (error) {
-    console.warn('[firebase] Could not sync user profile to Firestore:', error);
-  }
-}
-
-// Helper: Save a PRD draft to Firestore
+// Helper: Save a PRD draft to Firestore, keyed by the Better Auth user id
 export async function saveDraftToCloud(userId: string, draftData: any) {
   if (!userId) throw new Error('User must be logged in to save draft to cloud');
   try {
@@ -94,13 +50,3 @@ export async function loadDraftFromCloud(userId: string) {
     return null;
   }
 }
-
-export { 
-  signInWithPopup, 
-  createUserWithEmailAndPassword, 
-  signInWithEmailAndPassword, 
-  signOut, 
-  updateProfile,
-  sendPasswordResetEmail,
-  onAuthStateChanged 
-};

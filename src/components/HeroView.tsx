@@ -73,7 +73,7 @@ export const HeroView: React.FC<HeroViewProps> = ({
               >
                 <span className="w-2 h-2 rounded-full bg-amber-400" />
                 <span className="text-[11px] font-mono text-amber-300">
-                  Wajib Masuk / Daftar (Google atau Email) →
+                  Masuk untuk mulai — pakai email →
                 </span>
               </button>
             )}
@@ -250,13 +250,13 @@ export const HeroView: React.FC<HeroViewProps> = ({
                 </div>
               </div>
 
-              {/* Monospace Philosophy Note */}
+              {/* Output Format Note */}
               <div className="font-mono text-[11px] leading-relaxed text-slate-400 text-right uppercase tracking-widest pl-4">
                 <span className="text-slate-600">&#123;</span>
-                <p className="text-slate-300">A CLEARER</p>
-                <p className="text-slate-300">PRODUCT</p>
-                <p className="text-slate-400">A BRIGHTER</p>
-                <p className="text-slate-400">TOMORROW</p>
+                <p className="text-slate-300">SIAP PAKAI</p>
+                <p className="text-slate-300">BUKAN DRAF</p>
+                <p className="text-slate-400">PRD · ERD</p>
+                <p className="text-slate-400">SQL · TASK</p>
                 <span className="text-slate-600">&#125;</span>
               </div>
             </div>
@@ -266,36 +266,36 @@ export const HeroView: React.FC<HeroViewProps> = ({
               <div className="rounded-xl bg-[#090C16] border border-white/[0.08] p-4 font-mono text-xs shadow-inner hover:border-[#F2542D]/50 transition">
                 <div className="flex items-center gap-2 text-[#F2542D] mb-1.5 font-semibold">
                   <span>&gt;</span>
-                  <span className="text-slate-200">What will you build?</span>
+                  <span className="text-slate-200">Apa yang ingin kamu bangun?</span>
                 </div>
                 <p className="text-slate-500 pl-4 italic">
-                  {quickIdea || "Type your idea here..."}
+                  {quickIdea || "Ketik ide kamu di sini..."}
                 </p>
               </div>
             </div>
 
             {/* Card Mid/Bottom Split: Motto Tag & Checklist Sections */}
             <div className="grid grid-cols-12 gap-4 items-end pt-2">
-              {/* Left slogan tag */}
+              {/* Label for the topic checklist */}
               <div className="col-span-6 font-mono text-[11px] tracking-widest uppercase text-slate-400">
-                <p>TURN IDEAS</p>
-                <p className="text-slate-300 font-bold">INTO REAL PRODUCTS</p>
+                <p>DIBAHAS DI</p>
+                <p className="text-slate-300 font-bold">WAWANCARA</p>
                 <div className="w-8 h-[2px] bg-[#F2542D] mt-2" />
               </div>
 
-              {/* Right checklist of generated PRD chapters */}
+              {/* Right checklist of interview topics */}
               <div className="col-span-6 font-mono text-xs space-y-2 text-slate-400">
                 <div className="flex items-center gap-2 text-slate-300">
                   <span className="w-3 h-[1px] bg-slate-600" />
-                  <span>PRODUCT</span>
+                  <span>PRODUK</span>
                 </div>
                 <div className="flex items-center gap-2 text-slate-300">
                   <span className="w-3 h-[1px] bg-slate-600" />
-                  <span>USERS</span>
+                  <span>PENGGUNA</span>
                 </div>
                 <div className="flex items-center gap-2 text-slate-300">
                   <span className="w-3 h-[1px] bg-slate-600" />
-                  <span>FEATURES</span>
+                  <span>FITUR</span>
                 </div>
                 <div className="flex items-center gap-2 text-slate-400">
                   <span className="w-3 h-[1px] bg-slate-600" />
@@ -303,7 +303,7 @@ export const HeroView: React.FC<HeroViewProps> = ({
                 </div>
                 <div className="flex items-center gap-2 text-slate-400">
                   <span className="w-3 h-[1px] bg-slate-600" />
-                  <span>ARCHITECTURE</span>
+                  <span>ARSITEKTUR</span>
                 </div>
                 <div className="flex items-center gap-2 text-slate-500">
                   <span className="w-3 h-[1px] bg-slate-600" />

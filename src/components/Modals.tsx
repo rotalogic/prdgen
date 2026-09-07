@@ -69,7 +69,8 @@ export const DocsModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ 
       </div>
 
       <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 text-xs text-slate-400">
-        💡 <strong>Tips CTO:</strong> Jangan ragu mengisi batasan secara spesifik. Menentukan apa yang <em>tidak dibangun</em> di V1 adalah kunci keberhasilan rilis tepat waktu.
+        <span className="font-mono text-[10px] uppercase tracking-widest text-[#F2542D]">Tips CTO —</span>{' '}
+        Jangan ragu mengisi batasan secara spesifik. Menentukan apa yang <em>tidak dibangun</em> di V1 adalah kunci keberhasilan rilis tepat waktu.
       </div>
     </div>
   </ModalWrapper>
@@ -142,13 +143,13 @@ export const SettingsModal: React.FC<{
       return 'Menggunakan model Gemini default lingkungan server RotaLogic untuk memperkaya analisis PRD.';
     }
     if (activeProvider === 'gemini') {
-      return `Model aktif: Google Gemini (${aiConfig?.model || 'gemini-2.5-flash'}). Kunci pribadi Anda aktif.`;
+      return `Model aktif: Google Gemini (${aiConfig?.model || 'gemini-3.8-flash'}). Kunci pribadi Anda aktif.`;
     }
     if (activeProvider === 'openai') {
-      return `Model aktif: OpenAI ${aiConfig?.model || 'gpt-4o-mini'}. Kunci API pribadi Anda aktif.`;
+      return `Model aktif: OpenAI ${aiConfig?.model || 'gpt-5.6-terra'}. Kunci API pribadi Anda aktif.`;
     }
     if (activeProvider === 'claude') {
-      return `Model aktif: Anthropic Claude (${aiConfig?.model || 'claude-3-5-sonnet'}). Kunci API pribadi Anda aktif.`;
+      return `Model aktif: Anthropic Claude (${aiConfig?.model || 'claude-sonnet-5'}). Kunci API pribadi Anda aktif.`;
     }
     if (activeProvider === 'custom') {
       return `Model aktif: Endpoint Kustom (${aiConfig?.customModel || 'custom'}). Base URL: ${aiConfig?.customBaseUrl || '-'}.`;
@@ -173,7 +174,7 @@ export const SettingsModal: React.FC<{
       icon={<Settings className="w-5 h-5 text-amber-400" />}
     >
       <div className="space-y-5">
-        {/* User Account & Firebase Authentication */}
+        {/* User Account & Authentication */}
         <div className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800 space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-white flex items-center gap-2">
@@ -208,7 +209,7 @@ export const SettingsModal: React.FC<{
                   <p className="text-xs font-bold text-white truncate">{user.displayName || 'Pengguna RotaLogic'}</p>
                   <p className="text-[11px] text-slate-400 font-mono truncate">{user.email}</p>
                   <span className="text-[10px] text-emerald-400 font-mono">
-                    Provider: {user.providerData?.[0]?.providerId === 'google.com' ? 'Google Sign-In' : 'Email/Password'}
+                    Provider: {user.providerData?.[0]?.providerId === 'google' ? 'Google Sign-In' : 'Email/Password'}
                   </span>
                 </div>
               </div>
@@ -227,7 +228,7 @@ export const SettingsModal: React.FC<{
           ) : (
             <div className="space-y-2">
               <p className="text-[11px] text-slate-400 leading-relaxed">
-                Daftar atau masuk melalui Google atau alamat email Anda untuk menyimpan draf PRD ke Firebase Cloud Firestore dan mengaksesnya dari perangkat manapun.
+                Daftar atau masuk dengan email Anda untuk menyimpan draf PRD ke akun dan mengaksesnya dari perangkat manapun.
               </p>
               <button
                 type="button"
@@ -238,7 +239,7 @@ export const SettingsModal: React.FC<{
                 className="w-full py-2.5 px-3 rounded-lg bg-[#F2542D] hover:bg-[#ff6742] text-white font-bold text-xs transition flex items-center justify-center gap-2 cursor-pointer shadow-md"
               >
                 <LogIn className="w-3.5 h-3.5" />
-                <span>Daftar / Masuk (Google atau Email)</span>
+                <span>Daftar / Masuk dengan Email</span>
               </button>
             </div>
           )}

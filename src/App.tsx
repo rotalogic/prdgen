@@ -129,13 +129,13 @@ export function App() {
       return {
         provider: 'gemini',
         apiKey: legacyGeminiKey,
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3.8-flash',
       };
     } catch {
       return {
         provider: 'gemini',
         apiKey: '',
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3.8-flash',
       };
     }
   });
@@ -169,7 +169,7 @@ export function App() {
     const defaultConfig: AiConfig = {
       provider: 'gemini',
       apiKey: '',
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3.8-flash',
     };
     setAiConfig(defaultConfig);
     try {
@@ -226,7 +226,7 @@ export function App() {
       setAuthModalMode('register');
       setAuthModalPrompt({
         title: 'Daftar Akun untuk Memulai',
-        description: 'Untuk mulai membuat PRD, Anda harus mendaftar melalui akun Google atau email terlebih dahulu.'
+        description: 'Untuk mulai membuat PRD, Anda harus mendaftar dengan email terlebih dahulu.'
       });
       setIsAuthModalOpen(true);
       return;
@@ -253,7 +253,7 @@ export function App() {
       setAuthModalMode('login');
       setAuthModalPrompt({
         title: 'Masuk untuk Menghasilkan PRD',
-        description: 'Silakan masuk dengan akun Google atau email Anda untuk memproses dan menyimpan PRD.'
+        description: 'Silakan masuk dengan akun email Anda untuk memproses dan menyimpan PRD.'
       });
       setIsAuthModalOpen(true);
       return;
@@ -327,7 +327,7 @@ export function App() {
       setAuthModalMode('login');
       setAuthModalPrompt({
         title: 'Masuk untuk Menyimpan Draf',
-        description: 'Daftar melalui Google atau email untuk menyimpan draf PRD ke Cloud Firestore.'
+        description: 'Daftar dengan email untuk menyimpan draf PRD ke akunmu.'
       });
       setIsAuthModalOpen(true);
       return;

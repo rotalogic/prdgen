@@ -1,14 +1,41 @@
+// Must run before any local import — ES module imports evaluate in listed
+// order, and src/lib/auth.ts reads process.env.DATABASE_URL at import time
+// to build its Postgres pool. Importing it before env vars are loaded meant
+// it silently fell back to pg's localhost default.
+import "dotenv/config";
+
 import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
-import dotenv from "dotenv";
-
-dotenv.config();
+import { toNodeHandler } from "better-auth/node";
+import { auth, isGoogleAuthConfigured } from "./src/lib/auth";
 
 const app = express();
 const PORT = 3000;
 
+// Better Auth handles its own body parsing — must be mounted before
+// express.json() or it will hang trying to read an already-consumed stream.
+// Wrapped so a DB outage rejects this one request instead of crashing the
+// whole process (Express 4 doesn't catch async handler rejections itself).
+const authHandler = toNodeHandler(auth);
+app.all("/api/auth/*", async (req, res) => {
+  try {
+    await authHandler(req, res);
+  } catch (err) {
+    console.error("[better-auth] request failed:", err);
+    if (!res.headersSent) {
+      res.status(503).json({ error: "Auth service unavailable" });
+    }
+  }
+});
+
 app.use(express.json());
+
+// Tells the client whether Google sign-in has real credentials configured,
+// so the UI can disable the button instead of letting it fail at click time.
+app.get("/api/auth-status", (req, res) => {
+  res.json({ googleEnabled: isGoogleAuthConfigured });
+});
 
 // API health endpoint
 app.get("/api/health", (req, res) => {
@@ -62,7 +89,7 @@ Berikan respons terstruktur meliputi:
         }
       });
 
-      const modelName = aiConfig?.model || "gemini-2.5-flash";
+      const modelName = aiConfig?.model || "gemini-3.8-flash";
       const response = await ai.models.generateContent({
         model: modelName,
         contents: userPrompt,
@@ -81,7 +108,7 @@ Berikan respons terstruktur meliputi:
         });
       }
 
-      const modelName = aiConfig?.model || "gpt-4o-mini";
+      const modelName = aiConfig?.model || "gpt-5.6-terra";
       const openAiRes = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
         headers: {
@@ -114,7 +141,7 @@ Berikan respons terstruktur meliputi:
         });
       }
 
-      const modelName = aiConfig?.model || "claude-3-5-haiku-20241022";
+      const modelName = aiConfig?.model || "claude-sonnet-5";
       const claudeRes = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: {
@@ -231,7 +258,7 @@ app.post("/api/ai/verify-key", async (req, res) => {
         }
       });
 
-      const modelToUse = model || "gemini-2.5-flash";
+      const modelToUse = model || "gemini-3.8-flash";
       const testResponse = await ai.models.generateContent({
         model: modelToUse,
         contents: "Tes koneksi. Balas dengan: OK",
@@ -265,7 +292,7 @@ app.post("/api/ai/verify-key", async (req, res) => {
         });
       }
 
-      const modelToUse = model || "gpt-4o-mini";
+      const modelToUse = model || "gpt-5.6-terra";
       const openAiRes = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
         headers: {
@@ -312,7 +339,7 @@ app.post("/api/ai/verify-key", async (req, res) => {
         });
       }
 
-      const modelToUse = model || "claude-3-5-haiku-20241022";
+      const modelToUse = model || "claude-sonnet-5";
       const claudeRes = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: {

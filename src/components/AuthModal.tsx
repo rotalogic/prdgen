@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   X, 
   Mail, 
@@ -51,6 +51,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [googleEnabled, setGoogleEnabled] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    fetch('/api/auth-status')
+      .then((res) => res.json())
+      .then((data) => setGoogleEnabled(Boolean(data?.googleEnabled)))
+      .catch(() => setGoogleEnabled(false));
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -168,7 +177,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           </h2>
           <p className="text-xs text-slate-400 max-w-xs mx-auto">
             {description || (mode === 'register' 
-              ? 'Daftar melalui akun Google atau email Anda untuk mulai menyusun PRD & menyimpan progres arsitektur.'
+              ? 'Daftar dengan email Anda untuk mulai menyusun PRD & menyimpan progres arsitektur.'
               : mode === 'login'
               ? 'Masuk untuk mengakses draf PRD, rekomendasi arsitektur, dan ekspor dokumen.'
               : 'Masukkan email Anda untuk menerima instruksi reset kata sandi.')}
@@ -218,8 +227,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               id="auth-google-btn"
               type="button"
               onClick={handleGoogleAuth}
-              disabled={isGoogleSubmitting || isSubmitting}
-              className="w-full py-2.5 px-4 rounded-xl bg-white hover:bg-slate-100 text-slate-800 font-semibold text-xs transition flex items-center justify-center gap-3 shadow-md hover:shadow-lg cursor-pointer disabled:opacity-60"
+              disabled={!googleEnabled || isGoogleSubmitting || isSubmitting}
+              title={googleEnabled ? undefined : 'Google sign-in belum dikonfigurasi. Gunakan email dan kata sandi.'}
+              className="w-full py-2.5 px-4 rounded-xl bg-white hover:bg-slate-100 text-slate-800 font-semibold text-xs transition flex items-center justify-center gap-3 shadow-md hover:shadow-lg cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white"
             >
               {isGoogleSubmitting ? (
                 <RefreshCw className="w-4 h-4 animate-spin text-slate-600" />
@@ -244,10 +254,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 </svg>
               )}
               <span>
-                {isGoogleSubmitting 
-                  ? 'Menghubungkan ke Google...' 
-                  : mode === 'register' 
-                  ? 'Daftar dengan Google' 
+                {isGoogleSubmitting
+                  ? 'Menghubungkan ke Google...'
+                  : !googleEnabled
+                  ? 'Google sign-in belum tersedia'
+                  : mode === 'register'
+                  ? 'Daftar dengan Google'
                   : 'Lanjutkan dengan Google'}
               </span>
             </button>
@@ -417,7 +429,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         {/* Privacy & Cloud Sync Guarantee */}
         <div className="pt-2 border-t border-slate-800 text-[11px] text-slate-400 flex items-center gap-2">
           <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-          <span>Autentikasi aman melalui Firebase Auth. Draf tersimpan otomatis di Cloud Firestore.</span>
+          <span>Kata sandi disimpan terenkripsi. Draf tersimpan otomatis ke akunmu.</span>
         </div>
       </div>
     </div>

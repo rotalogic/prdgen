@@ -48,24 +48,15 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <header className="sticky top-0 z-50 w-full border-b border-white/[0.06] bg-[#070A12]/85 backdrop-blur-xl px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between transition-all">
       {/* Brand Logo & Identity */}
-      <div 
+      <div
         onClick={() => onNavigateStep('hero')}
-        className="flex items-center gap-3.5 cursor-pointer group select-none shrink-0"
+        className="flex items-center cursor-pointer group select-none shrink-0"
       >
-        <div className="w-9 h-9 sm:w-10 sm:h-10 flex-shrink-0 transition-transform duration-300 group-hover:scale-105">
-          <svg className="w-full h-full" fill="none" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-            <path d="M24 4L41.32 14V34L24 44L6.68 34V14L24 4Z" stroke="#F2542D" strokeLinejoin="round" strokeWidth="4" />
-            <path d="M24 14L32.66 19V29L24 34L15.34 29V19L24 14Z" stroke="#F2542D" strokeLinejoin="round" strokeWidth="3.5" />
-          </svg>
-        </div>
-        <div className="flex flex-col">
-          <span className="font-display font-bold text-base sm:text-lg leading-tight tracking-tight text-white group-hover:text-slate-100">
-            PRD Generator
-          </span>
-          <span className="text-[10px] font-mono text-slate-400 tracking-wider uppercase">
-            Spesifikasi &amp; Basis Data
-          </span>
-        </div>
+        <img
+          src="/assets/brand/rotalogic-logo.png"
+          alt="RotaLogic — PRD Generator"
+          className="h-8 sm:h-9 w-auto transition-transform duration-300 group-hover:scale-105"
+        />
       </div>
 
       {/* Stepper Progression Navigation (when not in Hero) */}
