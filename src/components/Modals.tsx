@@ -1,6 +1,5 @@
 import React from 'react';
-import { X, BookOpen, Clock, Settings, Save, Check, ExternalLink, HelpCircle, Key, Mountain, ShieldCheck, User as UserIcon, LogOut, LogIn } from 'lucide-react';
-import { AiConfig } from '../types';
+import { X, BookOpen, Clock, Settings, User as UserIcon, LogOut, LogIn } from 'lucide-react';
 
 interface ModalWrapperProps {
   isOpen: boolean;
@@ -107,12 +106,6 @@ export const ChangelogModal: React.FC<{ isOpen: boolean; onClose: () => void }> 
 export const SettingsModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
-  backgroundMode?: string;
-  onSetBackgroundMode?: (mode: any) => void;
-  onResetToOriginal?: () => void;
-  customApiKey?: string;
-  aiConfig?: AiConfig;
-  onOpenApiKeyDialog?: () => void;
   user?: any;
   isLoggedIn?: boolean;
   onOpenAuthModal?: () => void;
@@ -120,52 +113,11 @@ export const SettingsModal: React.FC<{
 }> = ({
   isOpen,
   onClose,
-  backgroundMode,
-  onSetBackgroundMode,
-  onResetToOriginal,
-  customApiKey,
-  aiConfig,
-  onOpenApiKeyDialog,
   user,
   isLoggedIn = false,
   onOpenAuthModal,
   onLogout
 }) => {
-  const activeProvider = aiConfig?.provider || (customApiKey ? 'gemini' : 'gemini');
-  const hasCustomConfig = Boolean(
-    aiConfig?.apiKey || 
-    (aiConfig?.provider === 'custom' && aiConfig?.customBaseUrl) || 
-    customApiKey
-  );
-
-  const getProviderDescription = () => {
-    if (!hasCustomConfig) {
-      return 'Menggunakan model Gemini default lingkungan server RotaLogic untuk memperkaya analisis PRD.';
-    }
-    if (activeProvider === 'gemini') {
-      return `Model aktif: Google Gemini (${aiConfig?.model || 'gemini-3.8-flash'}). Kunci pribadi Anda aktif.`;
-    }
-    if (activeProvider === 'openai') {
-      return `Model aktif: OpenAI ${aiConfig?.model || 'gpt-5.6-terra'}. Kunci API pribadi Anda aktif.`;
-    }
-    if (activeProvider === 'claude') {
-      return `Model aktif: Anthropic Claude (${aiConfig?.model || 'claude-sonnet-5'}). Kunci API pribadi Anda aktif.`;
-    }
-    if (activeProvider === 'custom') {
-      return `Model aktif: Endpoint Kustom (${aiConfig?.customModel || 'custom'}). Base URL: ${aiConfig?.customBaseUrl || '-'}.`;
-    }
-    return 'Kunci kustom aktif.';
-  };
-
-  const getProviderBadgeLabel = () => {
-    if (!hasCustomConfig) return 'Default Lingkungan';
-    if (activeProvider === 'gemini') return 'Gemini Kustom';
-    if (activeProvider === 'openai') return 'OpenAI GPT';
-    if (activeProvider === 'claude') return 'Claude';
-    if (activeProvider === 'custom') return 'Kustom API';
-    return 'Kustom Aktif';
-  };
-
   return (
     <ModalWrapper
       isOpen={isOpen}
@@ -243,79 +195,6 @@ export const SettingsModal: React.FC<{
               </button>
             </div>
           )}
-        </div>
-
-        {/* AI Key & Multi-Provider Section */}
-        <div className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800 space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-white flex items-center gap-2">
-              <Key className="w-4 h-4 text-[#F2542D]" />
-              <span>Penyedia AI &amp; Kunci API (Gemini, GPT, Claude, Custom)</span>
-            </span>
-            <span className={`text-[10px] font-mono px-2 py-0.5 rounded border ${
-              hasCustomConfig
-                ? 'bg-emerald-950/70 text-emerald-400 border-emerald-500/30'
-                : 'bg-slate-800 text-slate-400 border border-slate-700'
-            }`}>
-              {getProviderBadgeLabel()}
-            </span>
-          </div>
-          
-          <p className="text-[11px] text-slate-400 leading-relaxed">
-            {getProviderDescription()}
-          </p>
-
-          <button
-            id="settings-open-api-key-dialog-btn"
-            type="button"
-            onClick={onOpenApiKeyDialog}
-            className="w-full py-2.5 px-3 rounded-lg border border-[#F2542D]/40 bg-[#F2542D]/10 hover:bg-[#F2542D]/20 text-[#ff8e73] hover:text-white font-semibold text-xs transition flex items-center justify-center gap-2 cursor-pointer"
-          >
-            <Key className="w-3.5 h-3.5" />
-            <span>{hasCustomConfig ? 'Ubah Penyedia AI / Kunci API (Buka Dialog)' : 'Atur Penyedia AI & Kunci Pribadi (Buka Dialog)'}</span>
-          </button>
-        </div>
-
-        {/* Backup & Wallpaper Section */}
-        <div className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800 space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-white flex items-center gap-2">
-              <Mountain className="w-4 h-4 text-slate-300" />
-              <span>Latar Belakang &amp; Cadangan</span>
-            </span>
-            <span className="text-[10px] bg-emerald-900/40 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded font-mono">
-              Cadangan Tersedia
-            </span>
-          </div>
-          <p className="text-[11px] text-slate-400">
-            File cadangan tampilan awal telah tersimpan di <code className="text-emerald-300 font-mono">src/App.backup.tsx</code>. Anda dapat beralih tema visual kapan pun.
-          </p>
-          <div className="grid grid-cols-2 gap-2 pt-1">
-            <button
-              type="button"
-              onClick={() => onSetBackgroundMode?.('cosmic_lava')}
-              className={`p-2.5 rounded-lg border text-left text-xs transition-all cursor-pointer flex items-center gap-2 ${
-                backgroundMode === 'cosmic_lava'
-                  ? 'bg-[#F2542D]/20 border-[#F2542D] text-white font-medium'
-                  : 'bg-slate-900 border-slate-700 text-slate-300 hover:bg-slate-800'
-              }`}
-            >
-              <Mountain className="w-3.5 h-3.5 text-[#F2542D]" />
-              <span>Tema Kosmik</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => onResetToOriginal?.()}
-              className={`p-2.5 rounded-lg border text-left text-xs transition-all cursor-pointer flex items-center gap-2 ${
-                backgroundMode === 'default_minimal'
-                  ? 'bg-amber-500/20 border-amber-500 text-white font-medium'
-                  : 'bg-slate-900 border-slate-700 text-slate-300 hover:bg-slate-800'
-              }`}
-            >
-              <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
-              <span>Tampilan Standar</span>
-            </button>
-          </div>
         </div>
 
         <div className="space-y-2">

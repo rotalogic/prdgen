@@ -7,8 +7,9 @@ import "dotenv/config";
 import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
-import { toNodeHandler } from "better-auth/node";
+import { toNodeHandler, fromNodeHeaders } from "better-auth/node";
 import { auth, isGoogleAuthConfigured } from "./src/lib/auth";
+import { pool, ensureAppTables } from "./src/lib/db";
 
 const app = express();
 const PORT = 3000;
@@ -40,6 +41,60 @@ app.get("/api/auth-status", (req, res) => {
 // API health endpoint
 app.get("/api/health", (req, res) => {
   res.json({ status: "ok", time: new Date().toISOString() });
+});
+
+// Public homepage stats — real counts, no decorative/fake numbers.
+app.get("/api/stats", async (req, res) => {
+  try {
+    const [usersResult, generatorsResult, reviewsResult] = await Promise.all([
+      pool.query(`SELECT COUNT(*)::int AS count FROM "user"`),
+      pool.query(`SELECT COUNT(DISTINCT user_id)::int AS count FROM prd_generations`),
+      pool.query(`SELECT COUNT(*)::int AS count, COALESCE(AVG(rating), 0)::float AS average FROM reviews`),
+    ]);
+    res.json({
+      totalUsers: usersResult.rows[0].count,
+      totalGenerated: generatorsResult.rows[0].count,
+      reviewCount: reviewsResult.rows[0].count,
+      averageRating: Math.round(reviewsResult.rows[0].average * 10) / 10,
+    });
+  } catch (error) {
+    console.error("[stats] Failed to load stats:", error);
+    res.status(503).json({ error: "Statistik sedang tidak tersedia." });
+  }
+});
+
+// Records that the current logged-in user generated + downloaded a PRD.
+app.post("/api/prd-generations", async (req, res) => {
+  try {
+    const session = await auth.api.getSession({ headers: fromNodeHeaders(req.headers) });
+    if (!session) {
+      return res.status(401).json({ error: "Harus masuk untuk mencatat generate PRD." });
+    }
+    await pool.query(`INSERT INTO prd_generations (user_id) VALUES ($1)`, [session.user.id]);
+    res.status(201).json({ success: true });
+  } catch (error) {
+    console.error("[prd-generations] Failed to record generation:", error);
+    res.status(503).json({ error: "Gagal mencatat generate PRD." });
+  }
+});
+
+// Submits a 1-5 star rating from the current logged-in user.
+app.post("/api/reviews", async (req, res) => {
+  try {
+    const session = await auth.api.getSession({ headers: fromNodeHeaders(req.headers) });
+    if (!session) {
+      return res.status(401).json({ error: "Harus masuk untuk mengirim ulasan." });
+    }
+    const rating = Number(req.body?.rating);
+    if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+      return res.status(400).json({ error: "Rating harus berupa bilangan 1-5." });
+    }
+    await pool.query(`INSERT INTO reviews (user_id, rating) VALUES ($1, $2)`, [session.user.id, rating]);
+    res.status(201).json({ success: true });
+  } catch (error) {
+    console.error("[reviews] Failed to record review:", error);
+    res.status(503).json({ error: "Gagal mengirim ulasan." });
+  }
 });
 
 // Server-side AI generation endpoint supporting Gemini, OpenAI, Claude, and Custom OpenAI-compatible APIs
@@ -448,6 +503,12 @@ app.post("/api/ai/verify-key", async (req, res) => {
 });
 
 async function startServer() {
+  try {
+    await ensureAppTables();
+  } catch (error) {
+    console.error("[db] Failed to ensure app tables exist:", error);
+  }
+
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
       server: { middlewareMode: true },

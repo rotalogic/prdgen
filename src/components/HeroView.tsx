@@ -1,7 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Spline from '@splinetool/react-spline';
-import { FileText, Database, CheckSquare, Zap, ArrowRight, Sparkles, Trash2, FolderOpen, Clock } from 'lucide-react';
+import { FileText, Database, CheckSquare, Zap, ArrowRight, Sparkles, Trash2, FolderOpen, Clock, Users, Star } from 'lucide-react';
 import { SavedDraftInfo } from '../types';
+
+interface HomepageStats {
+  totalUsers: number;
+  totalGenerated: number;
+  reviewCount: number;
+  averageRating: number;
+}
 
 interface HeroViewProps {
   onStart: (initialIdea?: string) => void;
@@ -45,6 +52,14 @@ export const HeroView: React.FC<HeroViewProps> = ({
   onOpenAuthModal
 }) => {
   const [quickIdea, setQuickIdea] = useState('');
+  const [stats, setStats] = useState<HomepageStats | null>(null);
+
+  useEffect(() => {
+    fetch('/api/stats')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => data && setStats(data))
+      .catch(() => {});
+  }, []);
 
   const startOrGate = (idea?: string) => {
     if (!isLoggedIn) {
@@ -309,6 +324,45 @@ export const HeroView: React.FC<HeroViewProps> = ({
               </div>
             </div>
           </div>
+
+          {/* Real usage stats — no data yet, no section (nothing to fake here) */}
+          {stats && (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 pt-10 mt-2 border-t border-white/[0.08]">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg border border-slate-800 bg-slate-900/80 flex items-center justify-center text-[#F2542D] shrink-0">
+                  <Users className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="font-mono text-xl font-bold text-white">{stats.totalUsers.toLocaleString('id-ID')}</p>
+                  <p className="text-xs text-slate-400">Pengguna terdaftar</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg border border-slate-800 bg-slate-900/80 flex items-center justify-center text-[#F2542D] shrink-0">
+                  <FileText className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="font-mono text-xl font-bold text-white">{stats.totalGenerated.toLocaleString('id-ID')}</p>
+                  <p className="text-xs text-slate-400">PRD berhasil dibuat</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg border border-slate-800 bg-slate-900/80 flex items-center justify-center text-[#F2542D] shrink-0">
+                  <Star className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="font-mono text-xl font-bold text-white">
+                    {stats.reviewCount > 0 ? `${stats.averageRating.toFixed(1)} / 5` : '—'}
+                  </p>
+                  <p className="text-xs text-slate-400">
+                    {stats.reviewCount > 0 ? `Dari ${stats.reviewCount.toLocaleString('id-ID')} ulasan` : 'Belum ada ulasan'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

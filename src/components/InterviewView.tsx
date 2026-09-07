@@ -175,13 +175,14 @@ export const InterviewView: React.FC<InterviewViewProps> = ({
               </p>
               <textarea
                 rows={4}
+                maxLength={1000}
                 value={data.q1_problem}
                 onChange={(e) => onChange({ q1_problem: e.target.value })}
                 placeholder="Contoh: Tim developer sering menghabiskan waktu berminggu-minggu meraba-raba requirement yang tidak terstruktur sebelum mulai koding..."
                 className="w-full bg-[#101726] border border-slate-700/80 rounded-xl p-4 text-xs sm:text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-[#F2542D] focus:ring-1 focus:ring-[#F2542D] transition leading-relaxed"
               />
               <div className="text-right text-[11px] font-mono text-slate-500">
-                {data.q1_problem.length} karakter
+                {data.q1_problem.length} / 1000 karakter
               </div>
             </div>
 
@@ -232,13 +233,14 @@ export const InterviewView: React.FC<InterviewViewProps> = ({
               </p>
               <textarea
                 rows={3}
+                maxLength={1000}
                 value={data.q3_coreFeature}
                 onChange={(e) => onChange({ q3_coreFeature: e.target.value })}
                 placeholder="Contoh: Wizard wawancara interaktif yang langsung menghasilkan dokumen PRD, ERD, dan script migrasi SQL..."
                 className="w-full bg-[#101726] border border-slate-700/80 rounded-xl p-4 text-xs sm:text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-[#F2542D] focus:ring-1 focus:ring-[#F2542D] transition leading-relaxed"
               />
               <div className="text-right text-[11px] font-mono text-slate-500">
-                {data.q3_coreFeature.length} karakter
+                {data.q3_coreFeature.length} / 1000 karakter
               </div>
             </div>
 

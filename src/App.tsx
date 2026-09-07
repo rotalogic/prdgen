@@ -7,8 +7,9 @@ import {
   SavedDraftInfo,
   AiConfig
 } from './types';
-import { 
-  INITIAL_INTERVIEW_DATA 
+import {
+  INITIAL_INTERVIEW_DATA,
+  PRODUCT_TYPE_RECOMMENDATIONS
 } from './data/constants';
 import { generatePRDFromInputs } from './data/generator';
 
@@ -26,10 +27,11 @@ import { ResultView } from './components/ResultView';
 import { DocsModal, ChangelogModal, SettingsModal } from './components/Modals';
 import { ApiKeyDialog } from './components/ApiKeyDialog';
 import { AuthModal } from './components/AuthModal';
+import { ReviewPrompt } from './components/ReviewPrompt';
 import { useAuth } from './contexts/AuthContext';
 import { saveDraftToCloud, loadDraftFromCloud } from './lib/firebase';
-import { CosmicBackground, BackgroundMode } from './components/CosmicBackground';
-import { WallpaperControls } from './components/WallpaperControls';
+import { CosmicBackground } from './components/CosmicBackground';
+import { WizardBackground } from './components/WizardBackground';
 import confetti from 'canvas-confetti';
 
 export function App() {
@@ -42,23 +44,26 @@ export function App() {
   const [frontendId, setFrontendId] = useState<string>('nextjs');
   const [databaseId, setDatabaseId] = useState<string>('postgresql');
 
-  // Background Theme & Wallpaper State (with instant 1-click restore to original backup)
-  const [backgroundMode, setBackgroundMode] = useState<BackgroundMode>(() => {
-    return (localStorage.getItem('rotalogic_bg_mode') as BackgroundMode) || 'cosmic_lava';
-  });
-  const [customBgImage, setCustomBgImage] = useState<string | null>(() => {
-    return localStorage.getItem('rotalogic_custom_bg') || null;
-  });
-  const [dimOpacity, setDimOpacity] = useState<number>(() => {
-    const saved = localStorage.getItem('rotalogic_bg_dim');
-    return saved ? parseFloat(saved) : 0.25;
-  });
+  // Picking a product type in Step 1 re-applies the recommended frontend +
+  // database for it, so Steps 2/3 reflect that choice instead of always
+  // defaulting to Next.js + PostgreSQL. The user can still override either
+  // afterwards — that override just won't survive picking a different
+  // product type again.
+  const handleSelectProductType = (id: string) => {
+    setProductTypeId(id);
+    const recommendation = PRODUCT_TYPE_RECOMMENDATIONS[id];
+    if (recommendation) {
+      setFrontendId(recommendation.frontendId);
+      setDatabaseId(recommendation.databaseId);
+    }
+  };
 
   // User Authentication & Cloud Account State
   const { user, isLoggedIn, logout } = useAuth();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'login' | 'register'>('register');
   const [authModalPrompt, setAuthModalPrompt] = useState<{ title?: string; description?: string }>({});
+  const [isReviewPromptOpen, setIsReviewPromptOpen] = useState(false);
 
   const currentUserEmail = user?.email || '';
   const currentUserName = user?.displayName || (user?.email ? user.email.split('@')[0] : '');
@@ -189,35 +194,6 @@ export function App() {
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3000);
-  };
-
-  const handleSetBackgroundMode = (mode: BackgroundMode) => {
-    setBackgroundMode(mode);
-    localStorage.setItem('rotalogic_bg_mode', mode);
-    if (mode === 'default_minimal') {
-      showToast('Tampilan dikembalikan ke versi orisinal (Backup)');
-    } else {
-      showToast('Wallpaper gunung kosmik aktif');
-    }
-  };
-
-  const handleUploadCustomImage = (dataUrl: string) => {
-    setCustomBgImage(dataUrl);
-    setBackgroundMode('custom_upload');
-    localStorage.setItem('rotalogic_custom_bg', dataUrl);
-    localStorage.setItem('rotalogic_bg_mode', 'custom_upload');
-    showToast('Wallpaper custom berhasil diterapkan!');
-  };
-
-  const handleChangeDim = (dim: number) => {
-    setDimOpacity(dim);
-    localStorage.setItem('rotalogic_bg_dim', dim.toString());
-  };
-
-  const handleResetToOriginal = () => {
-    setBackgroundMode('default_minimal');
-    localStorage.setItem('rotalogic_bg_mode', 'default_minimal');
-    showToast('Tampilan berhasil dikembalikan ke versi awal (Backup)!');
   };
 
   // Start from Hero
@@ -401,6 +377,9 @@ export function App() {
       showToast('Anda telah berhasil keluar dari akun.');
     } catch (e) {
       console.error('Logout error:', e);
+    } finally {
+      setCurrentStep('hero');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 
@@ -443,16 +422,35 @@ ${result.tasks.map(t => `- [${t.completed ? 'x' : ' '}] [${t.priority}] ${t.titl
     URL.revokeObjectURL(url);
 
     showToast('Semua dokumen berhasil di-export!');
+
+    // Fire-and-forget: counts this user towards "PRD generated" on the
+    // homepage stats. Never blocks the download itself.
+    fetch('/api/prd-generations', { method: 'POST' }).catch(() => {});
+
+    if (!localStorage.getItem('rotalogic_reviewed')) {
+      setIsReviewPromptOpen(true);
+    }
+  };
+
+  const handleSubmitReview = async (rating: number) => {
+    const res = await fetch('/api/reviews', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rating }),
+    });
+    if (!res.ok) throw new Error('Failed to submit review');
+    localStorage.setItem('rotalogic_reviewed', 'true');
   };
 
   return (
     <div className="min-h-screen flex flex-col deep-atmosphere font-sans text-slate-100 selection:bg-[#F2542D] selection:text-white relative overflow-x-hidden">
-      {/* Dynamic Cosmic Volcano Wallpaper & Atmospheric Layer (with instant backup restore) */}
-      <CosmicBackground
-        mode={backgroundMode}
-        customImageUrl={customBgImage}
-        dimOpacity={dimOpacity}
-      />
+      {/* Background: cosmic wallpaper on the homepage (hidden behind the 3D
+          hero anyway), fixed mountain photo everywhere else in the wizard */}
+      {currentStep === 'hero' ? (
+        <CosmicBackground dimOpacity={0.25} />
+      ) : (
+        <WizardBackground />
+      )}
 
       {/* Main Header */}
       <Header
@@ -511,7 +509,7 @@ ${result.tasks.map(t => `- [${t.completed ? 'x' : ' '}] [${t.priority}] ${t.titl
               {currentStep === 'product_type' && (
                 <StepProductType
                   selectedId={productTypeId}
-                  onSelect={setProductTypeId}
+                  onSelect={handleSelectProductType}
                   onNext={() => {
                     setCurrentStep('frontend');
                     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -633,31 +631,12 @@ ${result.tasks.map(t => `- [${t.completed ? 'x' : ' '}] [${t.priority}] ${t.titl
         </div>
       )}
 
-      {/* Floating Wallpaper Control Bar & Quick Backup Revert — hanya untuk pengguna yang sudah masuk */}
-      {isLoggedIn && (
-        <WallpaperControls
-          mode={backgroundMode}
-          onSetMode={handleSetBackgroundMode}
-          customImageUrl={customBgImage}
-          onUploadCustomImage={handleUploadCustomImage}
-          onResetToOriginal={handleResetToOriginal}
-          dimOpacity={dimOpacity}
-          onChangeDim={handleChangeDim}
-        />
-      )}
-
       {/* Modals & Dialogs */}
       <DocsModal isOpen={isDocsOpen} onClose={() => setIsDocsOpen(false)} />
       <ChangelogModal isOpen={isChangelogOpen} onClose={() => setIsChangelogOpen(false)} />
-      <SettingsModal 
-        isOpen={isSettingsOpen} 
+      <SettingsModal
+        isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
-        backgroundMode={backgroundMode}
-        onSetBackgroundMode={handleSetBackgroundMode}
-        onResetToOriginal={handleResetToOriginal}
-        customApiKey={aiConfig.apiKey}
-        aiConfig={aiConfig}
-        onOpenApiKeyDialog={() => setIsApiKeyDialogOpen(true)}
         user={user}
         isLoggedIn={isLoggedIn}
         onOpenAuthModal={() => {
@@ -680,6 +659,11 @@ ${result.tasks.map(t => `- [${t.completed ? 'x' : ' '}] [${t.priority}] ${t.titl
         initialMode={authModalMode}
         title={authModalPrompt.title}
         description={authModalPrompt.description}
+      />
+      <ReviewPrompt
+        isOpen={isReviewPromptOpen}
+        onClose={() => setIsReviewPromptOpen(false)}
+        onSubmit={handleSubmitReview}
       />
     </div>
   );

@@ -45,6 +45,19 @@ export const PRODUCT_TYPES: StackOption[] = [
   }
 ];
 
+// Recommended frontend + database per product type — applied when the user
+// picks a product type in Step 1, so Steps 2/3 aren't stuck on one static
+// default (Next.js + PostgreSQL) regardless of what was actually chosen.
+export const PRODUCT_TYPE_RECOMMENDATIONS: Record<string, { frontendId: string; databaseId: string }> = {
+  web: { frontendId: 'nextjs', databaseId: 'postgresql' },
+  mobile: { frontendId: 'react_native', databaseId: 'firestore' },
+  desktop: { frontendId: 'electron', databaseId: 'sqlite' },
+  ai: { frontendId: 'nextjs', databaseId: 'supabase' },
+  saas: { frontendId: 'nextjs', databaseId: 'postgresql' },
+  landing: { frontendId: 'html_tailwind', databaseId: 'sqlite' },
+  custom: { frontendId: 'nextjs', databaseId: 'postgresql' },
+};
+
 export const FRONTEND_OPTIONS: StackOption[] = [
   {
     id: 'nextjs',

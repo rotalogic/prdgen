@@ -1,51 +1,15 @@
 import React from 'react';
 
-export type BackgroundMode = 'cosmic_lava' | 'custom_upload' | 'default_minimal';
-
 interface CosmicBackgroundProps {
-  mode: BackgroundMode;
-  customImageUrl?: string | null;
   dimOpacity?: number; // 0 to 1, default ~0.25 to 0.35 for readability
 }
 
+// Homepage-only backdrop (hidden behind the 3D hero's own opaque content, so
+// its only real visible use today is the vignette showing through gaps).
+// High-fidelity Cosmic Lava Mountain & Fiery Eclipse Planet, vector-drawn.
 export const CosmicBackground: React.FC<CosmicBackgroundProps> = ({
-  mode,
-  customImageUrl,
   dimOpacity = 0.2
 }) => {
-  // If user selected original backup mode
-  if (mode === 'default_minimal') {
-    return (
-      <>
-        <div className="fixed inset-0 pointer-events-none deep-atmosphere z-0 transition-opacity duration-500" />
-        <div className="glowing-horizon" />
-      </>
-    );
-  }
-
-  // If user uploaded a custom image (or set the uploaded ChatGPT image)
-  if (mode === 'custom_upload' && customImageUrl) {
-    return (
-      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden select-none">
-        <img
-          src={customImageUrl}
-          alt="Custom Wallpaper"
-          referrerPolicy="no-referrer"
-          className="absolute inset-0 w-full h-full object-cover object-center transform scale-105"
-        />
-        {/* Darkening tint for perfect text contrast & readability */}
-        <div 
-          className="absolute inset-0 bg-[#050813] transition-opacity duration-300"
-          style={{ opacity: dimOpacity }}
-        />
-        {/* Subtle radial vignette gradient */}
-        <div className="absolute inset-0 bg-radial-gradient from-transparent via-[#060A16]/50 to-[#04060C]/90" />
-      </div>
-    );
-  }
-
-  // Primary mode: High-fidelity Cosmic Lava Mountain & Fiery Eclipse Planet
-  // Replicating the user's uploaded ChatGPT wallpaper with vector sharpness and atmospheric glow
   return (
     <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden select-none bg-[#04060C]">
       {/* 1. Deep Space Canvas with Stars and Nebulae */}
