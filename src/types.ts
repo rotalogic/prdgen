@@ -29,7 +29,7 @@ export type WizardStep =
   | 'interview'
   | 'result';
 
-export type InterviewGroupIndex = 1 | 2 | 3 | 4 | 5;
+export type InterviewGroupIndex = 1 | 2 | 3 | 4 | 5 | 6;
 
 export type ResultTab = 
   | 'ringkasan'
@@ -97,7 +97,7 @@ export interface InterviewData {
   q16_timeline: string;
   q16_timelineNotes: string;
 
-  // Kelompok 5/5: Teknis & Preferensi
+  // Kelompok 5/6: Teknis & Preferensi
   q17_deployment: string;
   q18_auth: string;
   q19_apiArch: string;
@@ -105,6 +105,15 @@ export interface InterviewData {
   q21_observability: string[];
   q22_codeStandards: string[];
   q23_technicalNotes: string;
+
+  // Kelompok 6/6: Bisnis, Tim & Operasional
+  q24_businessModel: string;
+  q25_pricingNotes: string;
+  q26_teamRoles: string[];
+  q27_notificationChannels: string[];
+  q28_complianceNeeds: string[];
+  q29_supportModel: string;
+  q30_postMvpPlan: string;
 }
 
 export interface TaskItem {
@@ -124,6 +133,27 @@ export interface RiskItem {
   severity: 'Tinggi' | 'Sedang' | 'Rendah';
   likelihood: 'Tinggi' | 'Sedang' | 'Rendah';
   mitigation: string;
+}
+
+// One branch of the feature roadmap tree (Fitur -> Sub Fitur -> Tasks),
+// derived from the same interview answers as the rest of the PRD — never
+// hardcoded example features.
+export interface FeatureTreeNode {
+  id: string;
+  name: string;
+  phase: number;
+  status: string;
+  subFeatures: string[];
+  tasks: string[];
+}
+
+// Summary row for a PRD previously saved to the user's account (list view —
+// the full artifact set only loads when the user opens one).
+export interface SavedPrdSummary {
+  id: number;
+  title: string;
+  productType: string;
+  createdAt: string;
 }
 
 export interface GeneratedPRDResult {
@@ -146,6 +176,7 @@ export interface GeneratedPRDResult {
   mermaidArchitecture: string;
   entities: EntitySchema[];
   tasks: TaskItem[];
+  featureTree: FeatureTreeNode[];
   architectureSummary: {
     overview: string;
     frontendLayer: string;

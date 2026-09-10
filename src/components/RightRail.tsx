@@ -70,12 +70,16 @@ export const RightRail: React.FC<RightRailProps> = ({
     5: {
       title: 'Tips Teknis',
       quote: 'Keputusan teknis yang spesifik akan langsung menghasilkan boilerplate, scripts SQL, dan task sprint yang akurat.'
+    },
+    6: {
+      title: 'Tips Bisnis',
+      quote: 'Konteks bisnis dan operasional membuat PRD berguna bukan cuma untuk developer, tapi juga untuk tim produk dan stakeholder.'
     }
   };
 
-  // For Interview Step (5)
+  // For Interview Step (6 groups)
   if (currentStep === 'interview') {
-    const progressPercent = (interviewGroup / 5) * 100;
+    const progressPercent = (interviewGroup / 6) * 100;
     const currentTip = tipsByGroup[interviewGroup] || tipsByGroup[1];
 
     return (
@@ -85,7 +89,7 @@ export const RightRail: React.FC<RightRailProps> = ({
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-bold text-white tracking-wide">Progress Interview</span>
             <span className="text-xs font-mono font-bold text-[#F2542D] bg-[#F2542D]/10 px-2 py-0.5 rounded">
-              {interviewGroup} / 5
+              {interviewGroup} / 6
             </span>
           </div>
 
@@ -105,6 +109,7 @@ export const RightRail: React.FC<RightRailProps> = ({
               { idx: 3 as InterviewGroupIndex, name: 'Model Data' },
               { idx: 4 as InterviewGroupIndex, name: 'Batasan & Skala' },
               { idx: 5 as InterviewGroupIndex, name: 'Teknis & Preferensi' },
+              { idx: 6 as InterviewGroupIndex, name: 'Bisnis & Operasional' },
             ].map((step) => {
               const isCompleted = step.idx < interviewGroup;
               const isCurrent = step.idx === interviewGroup;
@@ -191,8 +196,8 @@ export const RightRail: React.FC<RightRailProps> = ({
               <span className="text-white font-medium text-right text-[11px] truncate max-w-[140px]">{backend}</span>
             </div>
 
-            {/* Deployment on step 5 */}
-            {interviewGroup === 5 && (
+            {/* Deployment, once chosen in step 5 */}
+            {interviewGroup >= 5 && (
               <div className="flex items-center justify-between py-1">
                 <div className="flex items-center gap-2 text-slate-400">
                   <span className="text-[#F2542D]">▲</span>

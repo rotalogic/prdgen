@@ -34,5 +34,14 @@ export async function ensureAppTables() {
       rating SMALLINT NOT NULL CHECK (rating BETWEEN 1 AND 5),
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
+    CREATE TABLE IF NOT EXISTS prd_documents (
+      id SERIAL PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+      title TEXT NOT NULL,
+      product_type TEXT NOT NULL,
+      payload JSONB NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS idx_prd_documents_user_id ON prd_documents(user_id);
   `);
 }

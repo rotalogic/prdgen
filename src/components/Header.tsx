@@ -6,8 +6,6 @@ interface HeaderProps {
   currentStep: WizardStep;
   interviewGroup: InterviewGroupIndex;
   onNavigateStep: (step: WizardStep) => void;
-  onOpenDocs: () => void;
-  onOpenChangelog: () => void;
   onOpenSettings: () => void;
   onOpenApiKeyDialog?: () => void;
   onOpenAuthModal?: () => void;
@@ -25,8 +23,6 @@ export const Header: React.FC<HeaderProps> = ({
   currentStep,
   interviewGroup,
   onNavigateStep,
-  onOpenDocs,
-  onOpenChangelog,
   onOpenSettings,
   onOpenApiKeyDialog,
   onOpenAuthModal,
@@ -191,7 +187,7 @@ export const Header: React.FC<HeaderProps> = ({
                   {isResult ? <Check className="w-3 h-3 stroke-[3]" /> : '5'}
                 </div>
                 <span className={`text-[11px] font-semibold ${isInterview ? 'text-white' : 'text-slate-300'}`}>
-                  Interview {isInterview ? `(${interviewGroup}/5)` : ''}
+                  Interview {isInterview ? `(${interviewGroup}/6)` : ''}
                 </span>
               </button>
               <div className={`w-5 h-[1.5px] mx-1.5 ${isResult ? 'bg-[#F2542D]' : 'bg-slate-700'}`} />
@@ -216,25 +212,9 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* Right Header Navigation & Actions */}
       <div className="flex items-center gap-4 sm:gap-6">
-        {/* Docs, Changelog, Kunci AI & Pengaturan — hanya untuk pengguna yang sudah masuk */}
+        {/* Kunci AI & Pengaturan — hanya untuk pengguna yang sudah masuk */}
         {isLoggedIn && (
           <>
-            <button
-              onClick={onOpenDocs}
-              className="text-xs font-medium text-slate-400 hover:text-white transition-colors"
-              type="button"
-            >
-              Docs
-            </button>
-
-            <button
-              onClick={onOpenChangelog}
-              className="text-xs font-medium text-slate-400 hover:text-white transition-colors"
-              type="button"
-            >
-              Changelog
-            </button>
-
             {onOpenApiKeyDialog && (
               <button
                 onClick={onOpenApiKeyDialog}

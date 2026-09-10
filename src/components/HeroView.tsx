@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Spline from '@splinetool/react-spline';
-import { FileText, Database, CheckSquare, Zap, ArrowRight, Sparkles, Trash2, FolderOpen, Clock, Users, Star } from 'lucide-react';
-import { SavedDraftInfo } from '../types';
+import { FileText, Database, CheckSquare, Zap, ArrowRight, Sparkles, Trash2, FolderOpen, Clock, Users, Star, History } from 'lucide-react';
+import { SavedDraftInfo, SavedPrdSummary } from '../types';
 
 interface HomepageStats {
   totalUsers: number;
@@ -15,6 +15,8 @@ interface HeroViewProps {
   savedDraft?: SavedDraftInfo | null;
   onResumeDraft?: () => void;
   onDiscardDraft?: () => void;
+  savedPrds?: SavedPrdSummary[];
+  onOpenSavedPrd?: (id: number) => void;
   userEmail?: string;
   userName?: string;
   isLoggedIn?: boolean;
@@ -48,6 +50,8 @@ export const HeroView: React.FC<HeroViewProps> = ({
   savedDraft,
   onResumeDraft,
   onDiscardDraft,
+  savedPrds = [],
+  onOpenSavedPrd,
   isLoggedIn = false,
   onOpenAuthModal
 }) => {
@@ -79,6 +83,15 @@ export const HeroView: React.FC<HeroViewProps> = ({
     try {
       const date = new Date(isoString);
       return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } catch {
+      return '';
+    }
+  };
+
+  const formatSavedDate = (isoString?: string) => {
+    if (!isoString) return '';
+    try {
+      return new Date(isoString).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
     } catch {
       return '';
     }
@@ -144,7 +157,7 @@ export const HeroView: React.FC<HeroViewProps> = ({
                       {savedDraft.databaseId}
                     </span>
                     <span className="px-2 py-0.5 rounded bg-[#F2542D]/20 text-[#ff8e73] border border-[#F2542D]/30">
-                      {savedDraft.lastStep === 'interview' ? `Interview Kelompok ${savedDraft.interviewGroup}/5` : savedDraft.lastStep}
+                      {savedDraft.lastStep === 'interview' ? `Interview Kelompok ${savedDraft.interviewGroup}/6` : savedDraft.lastStep}
                     </span>
                   </div>
 
@@ -360,6 +373,36 @@ export const HeroView: React.FC<HeroViewProps> = ({
                     {stats.reviewCount > 0 ? `Dari ${stats.reviewCount.toLocaleString('id-ID')} ulasan` : 'Belum ada ulasan'}
                   </p>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* PRD history — saved to the account, reopenable after logging
+              back in. Only shown when the user actually has any. */}
+          {isLoggedIn && savedPrds.length > 0 && (
+            <div className="pt-10 mt-2 border-t border-white/[0.08]">
+              <h2 className="flex items-center gap-2 text-sm font-mono font-bold text-slate-300 uppercase tracking-wider mb-4">
+                <History className="w-4 h-4 text-[#F2542D]" />
+                <span>PRD Tersimpan di Akunmu</span>
+              </h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {savedPrds.map((prd) => (
+                  <button
+                    key={prd.id}
+                    type="button"
+                    onClick={() => onOpenSavedPrd?.(prd.id)}
+                    className="text-left p-4 rounded-xl bg-[#101626] border border-slate-800 hover:border-[#F2542D]/50 transition flex items-start justify-between gap-3"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold text-white truncate">{prd.title}</p>
+                      <div className="flex items-center gap-1.5 mt-1 text-[10px] font-mono text-slate-400">
+                        <span className="px-1.5 py-0.5 rounded bg-slate-800/80 border border-slate-700/80">{prd.productType}</span>
+                        <span>{formatSavedDate(prd.createdAt)}</span>
+                      </div>
+                    </div>
+                    <FileText className="w-4 h-4 text-slate-500 shrink-0 mt-0.5" />
+                  </button>
+                ))}
               </div>
             </div>
           )}

@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, BookOpen, Clock, Settings, User as UserIcon, LogOut, LogIn } from 'lucide-react';
+import { X, Settings, User as UserIcon, LogOut, LogIn } from 'lucide-react';
 
 interface ModalWrapperProps {
   isOpen: boolean;
@@ -44,64 +44,6 @@ export const ModalWrapper: React.FC<ModalWrapperProps> = ({
     </div>
   );
 };
-
-export const DocsModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpen, onClose }) => (
-  <ModalWrapper
-    isOpen={isOpen}
-    onClose={onClose}
-    title="Panduan & Dokumentasi PRD Generator"
-    icon={<BookOpen className="w-5 h-5 text-[#F2542D]" />}
-  >
-    <div className="space-y-4 text-slate-300">
-      <p>
-        <strong>PRD Generator by RotaLogic</strong> dirancang untuk menjembatani ide awal menjadi dokumen spesifikasi teknis siap koding dalam hitungan menit lewat wawancara terarah.
-      </p>
-
-      <div className="space-y-2">
-        <h4 className="font-bold text-white text-sm">Alur Kerja 4 Langkah:</h4>
-        <ol className="list-decimal pl-5 space-y-1.5 text-xs text-slate-400">
-          <li><strong>Pilih Stack Dasar:</strong> Tentukan jenis produk, frontend, dan database. Sintaks SQL dan arsitektur akan otomatis disesuaikan.</li>
-          <li><strong>Sesi Interview 5 Kelompok:</strong> Jawab pertanyaan seputar masalah, momen &quot;Aha&quot;, entitas data, batasan infrastruktur, dan preferensi arsitektur.</li>
-          <li><strong>Interaktif Field Builder:</strong> Kelola nama tabel, tipe data (UUID/VARCHAR/TIMESTAMP), primary key, dan foreign key secara langsung.</li>
-          <li><strong>Export Artefak Lengkap:</strong> Dapatkan PRD (.md), ERD Mermaid, DDL SQL (.sql), Task Sprint List, dan Analisis Risiko.</li>
-        </ol>
-      </div>
-
-      <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 text-xs text-slate-400">
-        <span className="font-mono text-[10px] uppercase tracking-widest text-[#F2542D]">Tips CTO —</span>{' '}
-        Jangan ragu mengisi batasan secara spesifik. Menentukan apa yang <em>tidak dibangun</em> di V1 adalah kunci keberhasilan rilis tepat waktu.
-      </div>
-    </div>
-  </ModalWrapper>
-);
-
-export const ChangelogModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpen, onClose }) => (
-  <ModalWrapper
-    isOpen={isOpen}
-    onClose={onClose}
-    title="Changelog & Versi Rilis"
-    icon={<Clock className="w-5 h-5 text-sky-400" />}
-  >
-    <div className="space-y-6">
-      <div className="border-l-2 border-[#F2542D] pl-4 space-y-1">
-        <div className="flex items-center gap-2">
-          <span className="font-mono font-bold text-white text-sm">V1.0.0</span>
-          <span className="text-[10px] bg-[#F2542D]/20 text-[#F2542D] px-2 py-0.5 rounded font-mono font-bold">LATEST</span>
-        </div>
-        <p className="text-[11px] text-slate-500 font-mono">Rilis Perdana • RotaLogic Engine</p>
-        <ul className="list-disc pl-4 text-xs text-slate-400 space-y-1 pt-2">
-          <li>Hero landing page dengan 3D perspective terminal preview.</li>
-          <li>Wizard 4 tahap: Jenis Produk, Frontend, Database, dan Ringkasan Stack.</li>
-          <li>Interview 5 Kelompok terstruktur dengan interactive Field &amp; Entity builder.</li>
-          <li>Live ERD canvas visual &amp; Mermaid diagram parser.</li>
-          <li>Multi-database SQL schema generator (PostgreSQL, MySQL, SQLite, Supabase).</li>
-          <li>Task list &amp; sprint backlog dengan checklist interaktif.</li>
-          <li>Full markdown exporter &amp; single-click artifact packager.</li>
-        </ul>
-      </div>
-    </div>
-  </ModalWrapper>
-);
 
 export const SettingsModal: React.FC<{
   isOpen: boolean;

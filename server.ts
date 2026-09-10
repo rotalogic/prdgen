@@ -97,6 +97,74 @@ app.post("/api/reviews", async (req, res) => {
   }
 });
 
+// Saves a fully generated PRD (all artifacts) to the current user's account
+// so it stays reachable after they log back in later.
+app.post("/api/prds", async (req, res) => {
+  try {
+    const session = await auth.api.getSession({ headers: fromNodeHeaders(req.headers) });
+    if (!session) {
+      return res.status(401).json({ error: "Harus masuk untuk menyimpan PRD." });
+    }
+    const { title, productType, payload } = req.body || {};
+    if (!title || typeof title !== 'string' || !payload || typeof payload !== 'object') {
+      return res.status(400).json({ error: "Data PRD tidak lengkap." });
+    }
+    const result = await pool.query(
+      `INSERT INTO prd_documents (user_id, title, product_type, payload) VALUES ($1, $2, $3, $4) RETURNING id, created_at`,
+      [session.user.id, title.slice(0, 200), String(productType || '').slice(0, 100), JSON.stringify(payload)]
+    );
+    res.status(201).json({ id: result.rows[0].id, createdAt: result.rows[0].created_at });
+  } catch (error) {
+    console.error("[prds] Failed to save PRD:", error);
+    res.status(503).json({ error: "Gagal menyimpan PRD." });
+  }
+});
+
+// Lists the current user's saved PRDs (summary only — no payload).
+app.get("/api/prds", async (req, res) => {
+  try {
+    const session = await auth.api.getSession({ headers: fromNodeHeaders(req.headers) });
+    if (!session) {
+      return res.status(401).json({ error: "Harus masuk untuk melihat riwayat PRD." });
+    }
+    const result = await pool.query(
+      `SELECT id, title, product_type AS "productType", created_at AS "createdAt"
+       FROM prd_documents WHERE user_id = $1 ORDER BY created_at DESC LIMIT 50`,
+      [session.user.id]
+    );
+    res.json(result.rows);
+  } catch (error) {
+    console.error("[prds] Failed to list PRDs:", error);
+    res.status(503).json({ error: "Gagal memuat riwayat PRD." });
+  }
+});
+
+// Fetches one saved PRD's full artifact payload — scoped to the owner so no
+// user can open another account's document by guessing an id.
+app.get("/api/prds/:id", async (req, res) => {
+  try {
+    const session = await auth.api.getSession({ headers: fromNodeHeaders(req.headers) });
+    if (!session) {
+      return res.status(401).json({ error: "Harus masuk untuk membuka PRD." });
+    }
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id)) {
+      return res.status(400).json({ error: "ID PRD tidak valid." });
+    }
+    const result = await pool.query(
+      `SELECT payload FROM prd_documents WHERE id = $1 AND user_id = $2`,
+      [id, session.user.id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "PRD tidak ditemukan." });
+    }
+    res.json(result.rows[0].payload);
+  } catch (error) {
+    console.error("[prds] Failed to fetch PRD:", error);
+    res.status(503).json({ error: "Gagal memuat PRD." });
+  }
+});
+
 // Server-side AI generation endpoint supporting Gemini, OpenAI, Claude, and Custom OpenAI-compatible APIs
 app.post("/api/ai/generate-prd", async (req, res) => {
   try {

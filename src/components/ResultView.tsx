@@ -38,6 +38,7 @@ export const ResultView: React.FC<ResultViewProps> = ({
   const [erdMode, setErdMode] = useState<'visual' | 'mermaid'>('visual');
   const [archMode, setArchMode] = useState<'visual' | 'mermaid'>('visual');
   const [sprintFilter, setSprintFilter] = useState<number | 'all'>('all');
+  const [taskViewMode, setTaskViewMode] = useState<'list' | 'roadmap'>('list');
 
   // FK inference for the ERD visual canvas — mirrors data/generator.ts so
   // the canvas shows the project's real entities, not a fixed example.
@@ -486,31 +487,115 @@ export const ResultView: React.FC<ResultViewProps> = ({
                 </p>
               </div>
 
-              {/* Sprint Filter Buttons */}
-              <div className="flex items-center gap-1.5 text-xs">
-                {[
-                  { id: 'all' as const, label: 'Semua Sprint' },
-                  { id: 1 as const, label: 'Sprint 1' },
-                  { id: 2 as const, label: 'Sprint 2' },
-                  { id: 3 as const, label: 'Sprint 3' },
-                ].map((s) => (
+              <div className="flex items-center gap-3">
+                {/* View Mode Toggle */}
+                <div className="flex items-center gap-2">
                   <button
-                    key={s.id}
-                    onClick={() => setSprintFilter(s.id)}
-                    className={`px-2.5 py-1 rounded-lg transition font-mono ${
-                      sprintFilter === s.id
-                        ? 'bg-[#F2542D] text-white font-bold'
-                        : 'bg-slate-800 text-slate-300 hover:text-white'
+                    onClick={() => setTaskViewMode('list')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-mono transition ${
+                      taskViewMode === 'list' ? 'bg-[#F2542D] text-white font-bold' : 'bg-slate-800 text-slate-300'
                     }`}
                     type="button"
                   >
-                    {s.label}
+                    Daftar
                   </button>
-                ))}
+                  <button
+                    onClick={() => setTaskViewMode('roadmap')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-mono transition ${
+                      taskViewMode === 'roadmap' ? 'bg-[#F2542D] text-white font-bold' : 'bg-slate-800 text-slate-300'
+                    }`}
+                    type="button"
+                  >
+                    Roadmap Fitur
+                  </button>
+                </div>
+
+                {/* Sprint Filter Buttons */}
+                {taskViewMode === 'list' && (
+                  <div className="flex items-center gap-1.5 text-xs">
+                    {[
+                      { id: 'all' as const, label: 'Semua Sprint' },
+                      { id: 1 as const, label: 'Sprint 1' },
+                      { id: 2 as const, label: 'Sprint 2' },
+                      { id: 3 as const, label: 'Sprint 3' },
+                    ].map((s) => (
+                      <button
+                        key={s.id}
+                        onClick={() => setSprintFilter(s.id)}
+                        className={`px-2.5 py-1 rounded-lg transition font-mono ${
+                          sprintFilter === s.id
+                            ? 'bg-[#F2542D] text-white font-bold'
+                            : 'bg-slate-800 text-slate-300 hover:text-white'
+                        }`}
+                        type="button"
+                      >
+                        {s.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* Task rows */}
+            {taskViewMode === 'roadmap' ? (
+              <div className="rounded-xl bg-[#070A14] border border-slate-800 p-6 overflow-x-auto">
+                <div className="inline-flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-[#151D30] border border-[#F2542D]/40 mb-6">
+                  <Layers className="w-4 h-4 text-[#F2542D]" />
+                  <div>
+                    <p className="text-xs font-bold text-white">{result.productName}</p>
+                    <p className="text-[10px] text-slate-400 font-mono">Perencanaan</p>
+                  </div>
+                </div>
+
+                <div className="relative pl-6 space-y-5 min-w-[700px]">
+                  <div className="absolute left-0 top-2 bottom-2 w-px bg-slate-700" />
+                  {result.featureTree.map((node) => (
+                    <div key={node.id} className="relative flex items-stretch gap-2">
+                      <div className="absolute -left-6 top-8 w-6 h-px bg-slate-700" />
+
+                      {/* Feature card */}
+                      <div className="w-56 shrink-0 p-3.5 rounded-xl bg-[#101728] border border-slate-700 space-y-1.5">
+                        <span className="inline-block px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30">
+                          FASE {node.phase}
+                        </span>
+                        <p className="text-xs font-bold text-white leading-snug">{node.name}</p>
+                        <p className="text-[10px] text-slate-500">{node.status}</p>
+                      </div>
+
+                      <div className="flex items-center text-slate-600 shrink-0">
+                        <ChevronRight className="w-4 h-4" />
+                      </div>
+
+                      {/* Sub Fitur card */}
+                      <div className="w-56 shrink-0 p-3.5 rounded-xl bg-[#101728] border border-slate-700 space-y-1.5">
+                        <span className="text-[9px] font-mono uppercase tracking-widest text-slate-500">Sub Fitur</span>
+                        {node.subFeatures.map((sf, i) => (
+                          <div key={i} className="flex items-start gap-1.5 text-[11px] text-slate-300">
+                            <span className="w-1 h-1 rounded-full bg-slate-600 mt-1.5 shrink-0" />
+                            <span>{sf}</span>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="flex items-center text-slate-600 shrink-0">
+                        <ChevronRight className="w-4 h-4" />
+                      </div>
+
+                      {/* Tasks card */}
+                      <div className="w-64 shrink-0 p-3.5 rounded-xl bg-[#101728] border border-slate-700 space-y-1.5">
+                        <span className="text-[9px] font-mono uppercase tracking-widest text-slate-500">Tasks</span>
+                        {node.tasks.map((t, i) => (
+                          <div key={i} className="flex items-start gap-1.5 text-[11px] text-slate-300">
+                            <CheckSquare className="w-3 h-3 text-slate-600 mt-0.5 shrink-0" />
+                            <span>{t}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
             <div className="space-y-2.5">
               {filteredTasks.map((task) => (
                 <div
@@ -556,6 +641,7 @@ export const ResultView: React.FC<ResultViewProps> = ({
                 </div>
               ))}
             </div>
+            )}
           </div>
         )}
 

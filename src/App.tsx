@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  WizardStep, 
-  InterviewGroupIndex, 
-  InterviewData, 
+  WizardStep,
+  InterviewGroupIndex,
+  InterviewData,
   GeneratedPRDResult,
   SavedDraftInfo,
+  SavedPrdSummary,
   AiConfig
 } from './types';
 import {
@@ -24,7 +25,7 @@ import { StepDatabase } from './components/StepDatabase';
 import { StepSummary } from './components/StepSummary';
 import { InterviewView } from './components/InterviewView';
 import { ResultView } from './components/ResultView';
-import { DocsModal, ChangelogModal, SettingsModal } from './components/Modals';
+import { SettingsModal } from './components/Modals';
 import { ApiKeyDialog } from './components/ApiKeyDialog';
 import { AuthModal } from './components/AuthModal';
 import { ReviewPrompt } from './components/ReviewPrompt';
@@ -71,6 +72,20 @@ export function App() {
 
   const [isSaving, setIsSaving] = useState(false);
   const [savedDraft, setSavedDraft] = useState<SavedDraftInfo | null>(null);
+  const [savedPrds, setSavedPrds] = useState<SavedPrdSummary[]>([]);
+
+  // Load this user's previously generated PRDs so they stay reachable across
+  // logins — refetched whenever the signed-in user changes.
+  useEffect(() => {
+    if (!user?.uid) {
+      setSavedPrds([]);
+      return;
+    }
+    fetch('/api/prds')
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data) => Array.isArray(data) && setSavedPrds(data))
+      .catch(() => {});
+  }, [user?.uid]);
 
   // Load draft from Cloud Firestore when user signs in
   useEffect(() => {
@@ -104,7 +119,10 @@ export function App() {
     const saved = localStorage.getItem('rotalogic_prd_interview');
     if (saved) {
       try {
-        return JSON.parse(saved);
+        // Spread over the current defaults so a draft saved before a schema
+        // change (new question fields added) still has every field defined
+        // instead of crashing the interview view on missing data.
+        return { ...INITIAL_INTERVIEW_DATA, ...JSON.parse(saved) };
       } catch (e) {
         // fallback
       }
@@ -117,8 +135,6 @@ export function App() {
   const [isGenerating, setIsGenerating] = useState(false);
 
   // Modals & Toast State
-  const [isDocsOpen, setIsDocsOpen] = useState(false);
-  const [isChangelogOpen, setIsChangelogOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isApiKeyDialogOpen, setIsApiKeyDialogOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -289,6 +305,29 @@ export function App() {
       });
 
       showToast('PRD dan artefak teknis berhasil dibuat!');
+
+      // Persist the full artifact set to the user's account right away so
+      // it's still reachable after they log back in later — not gated on
+      // download, since "generated" is the point it should be considered saved.
+      fetch('/api/prds', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: generated.productName,
+          productType: generated.productType,
+          payload: generated
+        })
+      })
+        .then((res) => (res.ok ? res.json() : null))
+        .then((saved) => {
+          if (saved?.id) {
+            setSavedPrds((prev) => [
+              { id: saved.id, title: generated.productName, productType: generated.productType, createdAt: saved.createdAt },
+              ...prev
+            ]);
+          }
+        })
+        .catch((e) => console.log('Save PRD info:', e));
     } catch (error) {
       console.error(error);
       showToast('Gagal memproses PRD. Silakan coba kembali.');
@@ -351,11 +390,26 @@ export function App() {
     setProductTypeId(savedDraft.productTypeId);
     setFrontendId(savedDraft.frontendId);
     setDatabaseId(savedDraft.databaseId);
-    setInterviewData(savedDraft.interviewData);
+    // Same schema-migration safety net as the localStorage load above — a
+    // draft saved to the cloud before new questions existed shouldn't crash.
+    setInterviewData({ ...INITIAL_INTERVIEW_DATA, ...savedDraft.interviewData });
     setInterviewGroup(savedDraft.interviewGroup);
     setCurrentStep(savedDraft.lastStep === 'hero' ? 'product_type' : savedDraft.lastStep);
     window.scrollTo({ top: 0, behavior: 'smooth' });
     showToast(`Draf proyek "${savedDraft.projectName}" dilanjutkan!`);
+  };
+
+  const handleOpenSavedPrd = async (id: number) => {
+    try {
+      const res = await fetch(`/api/prds/${id}`);
+      if (!res.ok) throw new Error('Failed to load saved PRD');
+      const payload: GeneratedPRDResult = await res.json();
+      setResult(payload);
+      setCurrentStep('result');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (e) {
+      showToast('Gagal membuka PRD tersimpan.');
+    }
   };
 
   const handleDiscardDraft = async () => {
@@ -460,8 +514,6 @@ ${result.tasks.map(t => `- [${t.completed ? 'x' : ' '}] [${t.priority}] ${t.titl
           setCurrentStep(step);
           window.scrollTo({ top: 0, behavior: 'smooth' });
         }}
-        onOpenDocs={() => setIsDocsOpen(true)}
-        onOpenChangelog={() => setIsChangelogOpen(true)}
         onOpenSettings={() => setIsSettingsOpen(true)}
         onOpenApiKeyDialog={() => setIsApiKeyDialogOpen(true)}
         onOpenAuthModal={() => {
@@ -482,11 +534,13 @@ ${result.tasks.map(t => `- [${t.completed ? 'x' : ' '}] [${t.priority}] ${t.titl
       {/* Hero View vs Wizard View Container */}
       {currentStep === 'hero' ? (
         <main className="flex-1">
-          <HeroView 
+          <HeroView
             onStart={handleStartFromHero}
             savedDraft={savedDraft}
             onResumeDraft={handleResumeDraft}
             onDiscardDraft={handleDiscardDraft}
+            savedPrds={savedPrds}
+            onOpenSavedPrd={handleOpenSavedPrd}
             userEmail={currentUserEmail}
             userName={currentUserName}
             isLoggedIn={isLoggedIn}
@@ -632,8 +686,6 @@ ${result.tasks.map(t => `- [${t.completed ? 'x' : ' '}] [${t.priority}] ${t.titl
       )}
 
       {/* Modals & Dialogs */}
-      <DocsModal isOpen={isDocsOpen} onClose={() => setIsDocsOpen(false)} />
-      <ChangelogModal isOpen={isChangelogOpen} onClose={() => setIsChangelogOpen(false)} />
       <SettingsModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}

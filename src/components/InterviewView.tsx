@@ -155,7 +155,7 @@ export const InterviewView: React.FC<InterviewViewProps> = ({
             {/* Header Tag */}
             <div>
               <div className="text-xs font-mono font-bold tracking-widest text-[#F2542D] uppercase mb-2">
-                KELOMPOK 1/5 • PRODUK &amp; PENGGUNA
+                KELOMPOK 1/6 • PRODUK &amp; PENGGUNA
               </div>
               <h2 className="text-3xl font-display font-bold text-white tracking-tight mb-2">
                 Pondasi Produk &amp; Pengguna
@@ -260,7 +260,7 @@ export const InterviewView: React.FC<InterviewViewProps> = ({
                 className="inline-flex items-center gap-2 px-7 py-3 rounded-lg bg-[#F2542D] hover:bg-[#ff6742] text-white font-semibold text-sm shadow-lg shadow-[#F2542D]/25 transition"
                 type="button"
               >
-                <span>Lanjut ke Alur &amp; Lingkup (2/5)</span>
+                <span>Lanjut ke Alur &amp; Lingkup (2/6)</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
             </div>
@@ -274,7 +274,7 @@ export const InterviewView: React.FC<InterviewViewProps> = ({
           <div className="space-y-8">
             <div>
               <div className="text-xs font-mono font-bold tracking-widest text-[#F2542D] uppercase mb-2">
-                KELOMPOK 2/5 • ALUR &amp; LINGKUP
+                KELOMPOK 2/6 • ALUR &amp; LINGKUP
               </div>
               <h2 className="text-3xl font-display font-bold text-white tracking-tight mb-2">
                 Alur Pengguna &amp; Batasan Lingkup
@@ -352,7 +352,7 @@ export const InterviewView: React.FC<InterviewViewProps> = ({
                 type="button"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
-                <span>Kembali (1/5)</span>
+                <span>Kembali (1/6)</span>
               </button>
 
               <button
@@ -360,7 +360,7 @@ export const InterviewView: React.FC<InterviewViewProps> = ({
                 className="inline-flex items-center gap-2 px-7 py-3 rounded-lg bg-[#F2542D] hover:bg-[#ff6742] text-white font-semibold text-sm shadow-lg shadow-[#F2542D]/25 transition"
                 type="button"
               >
-                <span>Lanjut ke Model Data (3/5)</span>
+                <span>Lanjut ke Model Data (3/6)</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
             </div>
@@ -374,7 +374,7 @@ export const InterviewView: React.FC<InterviewViewProps> = ({
           <div className="space-y-8">
             <div>
               <div className="text-xs font-mono font-bold tracking-widest text-[#F2542D] uppercase mb-2">
-                KELOMPOK 3/5 • MODEL DATA
+                KELOMPOK 3/6 • MODEL DATA
               </div>
               <h2 className="text-3xl font-display font-bold text-white tracking-tight mb-2">
                 Model Data &amp; Relasi
@@ -707,7 +707,7 @@ ${data.q8_entities.map(e => `CREATE TABLE ${e.name} (\n${e.fields.map(f => `    
                 type="button"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
-                <span>Kembali (2/5)</span>
+                <span>Kembali (2/6)</span>
               </button>
 
               <button
@@ -715,7 +715,7 @@ ${data.q8_entities.map(e => `CREATE TABLE ${e.name} (\n${e.fields.map(f => `    
                 className="inline-flex items-center gap-2 px-7 py-3 rounded-lg bg-[#F2542D] hover:bg-[#ff6742] text-white font-semibold text-sm shadow-lg shadow-[#F2542D]/25 transition"
                 type="button"
               >
-                <span>Lanjut ke Batasan &amp; Skala (4/5)</span>
+                <span>Lanjut ke Batasan &amp; Skala (4/6)</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
             </div>
@@ -729,7 +729,7 @@ ${data.q8_entities.map(e => `CREATE TABLE ${e.name} (\n${e.fields.map(f => `    
           <div className="space-y-8">
             <div>
               <div className="text-xs font-mono font-bold tracking-widest text-[#F2542D] uppercase mb-2">
-                KELOMPOK 4/5 • BATASAN &amp; SKALA
+                KELOMPOK 4/6 • BATASAN &amp; SKALA
               </div>
               <h2 className="text-3xl font-display font-bold text-white tracking-tight mb-2">
                 Batasan &amp; Estimasi Skala
@@ -960,7 +960,7 @@ ${data.q8_entities.map(e => `CREATE TABLE ${e.name} (\n${e.fields.map(f => `    
                 type="button"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
-                <span>Kembali (3/5)</span>
+                <span>Kembali (3/6)</span>
               </button>
 
               <button
@@ -968,7 +968,7 @@ ${data.q8_entities.map(e => `CREATE TABLE ${e.name} (\n${e.fields.map(f => `    
                 className="inline-flex items-center gap-2 px-7 py-3 rounded-lg bg-[#F2542D] hover:bg-[#ff6742] text-white font-semibold text-sm shadow-lg shadow-[#F2542D]/25 transition"
                 type="button"
               >
-                <span>Lanjut ke Teknis &amp; Preferensi (5/5)</span>
+                <span>Lanjut ke Teknis &amp; Preferensi (5/6)</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
             </div>
@@ -982,13 +982,13 @@ ${data.q8_entities.map(e => `CREATE TABLE ${e.name} (\n${e.fields.map(f => `    
           <div className="space-y-8">
             <div>
               <div className="text-xs font-mono font-bold tracking-widest text-[#F2542D] uppercase mb-2">
-                KELOMPOK 5/5 • TEKNIS &amp; PREFERENSI
+                KELOMPOK 5/6 • TEKNIS &amp; PREFERENSI
               </div>
               <h2 className="text-3xl font-display font-bold text-white tracking-tight mb-2">
                 Preferensi Teknis &amp; Arsitektur
               </h2>
               <p className="text-sm text-slate-400">
-                Langkah terakhir! Tentukan preferensi teknis untuk melengkapi dokumen PRD, arsitektur sistem, dan task list.
+                Tentukan preferensi teknis untuk melengkapi dokumen PRD, arsitektur sistem, dan task list.
               </p>
             </div>
 
@@ -1195,17 +1195,7 @@ ${data.q8_entities.map(e => `CREATE TABLE ${e.name} (\n${e.fields.map(f => `    
               />
             </div>
 
-            {/* Bottom notification card */}
-            <div className="p-3.5 rounded-xl bg-[#0E1528] border border-slate-800 text-slate-400 text-xs flex items-center gap-3">
-              <div className="w-6 h-6 rounded-lg bg-[#F2542D]/20 text-[#F2542D] flex items-center justify-center shrink-0">
-                <Sparkles className="w-3.5 h-3.5" />
-              </div>
-              <p>
-                Semua jawaban akan digabungkan untuk menghasilkan PRD lengkap, ERD, skema SQL, arsitektur sistem, dan task list sprint.
-              </p>
-            </div>
-
-            {/* Final Action Bar */}
+            {/* Navigation Bar */}
             <div className="flex items-center justify-between pt-6 border-t border-slate-800">
               <button
                 onClick={() => onNavigateGroup(4)}
@@ -1213,7 +1203,240 @@ ${data.q8_entities.map(e => `CREATE TABLE ${e.name} (\n${e.fields.map(f => `    
                 type="button"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
-                <span>Kembali (4/5)</span>
+                <span>Kembali (4/6)</span>
+              </button>
+
+              <button
+                onClick={() => onNavigateGroup(6)}
+                className="inline-flex items-center gap-2 px-7 py-3 rounded-lg bg-[#F2542D] hover:bg-[#ff6742] text-white font-semibold text-sm shadow-lg shadow-[#F2542D]/25 transition"
+                type="button"
+              >
+                <span>Lanjut ke Bisnis &amp; Operasional (6/6)</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* =========================================================================
+            KELOMPOK 6/6: BISNIS, TIM & OPERASIONAL (Final Group before Generation)
+           ========================================================================= */}
+        {groupIndex === 6 && (
+          <div className="space-y-8">
+            <div>
+              <div className="text-xs font-mono font-bold tracking-widest text-[#F2542D] uppercase mb-2">
+                KELOMPOK 6/6 • BISNIS, TIM &amp; OPERASIONAL
+              </div>
+              <h2 className="text-3xl font-display font-bold text-white tracking-tight mb-2">
+                Model Bisnis &amp; Operasional
+              </h2>
+              <p className="text-sm text-slate-400">
+                Langkah terakhir! Lengkapi konteks bisnis, tim, dan operasional agar dokumen PRD mencakup lebih dari sekadar teknis.
+              </p>
+            </div>
+
+            {/* 1. Business Model */}
+            <div className="space-y-2.5">
+              <label className="block font-bold text-white text-sm">
+                1. Model bisnis produk ini seperti apa?
+              </label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                {[
+                  'Gratis / Open Source',
+                  'Freemium',
+                  'Berlangganan (Subscription)',
+                  'Sekali Bayar (One-time)',
+                  'Internal / Tidak Dijual',
+                  'Lainnya'
+                ].map((model) => {
+                  const isSelected = data.q24_businessModel === model;
+                  return (
+                    <button
+                      key={model}
+                      onClick={() => onChange({ q24_businessModel: model })}
+                      className={`p-3 rounded-xl border text-center text-xs font-medium transition ${
+                        isSelected
+                          ? 'bg-[#111A2E] border-[#F2542D] text-white shadow-sm'
+                          : 'bg-[#101726]/60 border-slate-800 text-slate-400 hover:text-slate-200'
+                      }`}
+                      type="button"
+                    >
+                      {model}
+                    </button>
+                  );
+                })}
+              </div>
+              <textarea
+                rows={2}
+                maxLength={1000}
+                value={data.q25_pricingNotes}
+                onChange={(e) => onChange({ q25_pricingNotes: e.target.value })}
+                placeholder="Catatan paket harga / skema monetisasi (opsional)..."
+                className="w-full bg-[#101726] border border-slate-700/80 rounded-xl p-3.5 text-xs sm:text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-[#F2542D] transition"
+              />
+              <div className="text-right text-[11px] font-mono text-slate-500">
+                {data.q25_pricingNotes.length} / 1000 karakter
+              </div>
+            </div>
+
+            {/* 2. Team Roles */}
+            <div className="space-y-3">
+              <label className="block font-bold text-white text-sm">
+                2. Peran (role) apa saja yang akan mengakses sistem?
+              </label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                {[
+                  'Admin',
+                  'Member / Staff',
+                  'Pelanggan / End User',
+                  'Guest / Viewer',
+                  'Owner Tunggal (tanpa role)'
+                ].map((role) => {
+                  const isChecked = data.q26_teamRoles.includes(role);
+                  return (
+                    <button
+                      key={role}
+                      onClick={() => {
+                        const updated = isChecked
+                          ? data.q26_teamRoles.filter(x => x !== role)
+                          : [...data.q26_teamRoles, role];
+                        onChange({ q26_teamRoles: updated });
+                      }}
+                      className={`p-3 rounded-xl border text-left text-xs font-medium transition flex items-center justify-between ${
+                        isChecked
+                          ? 'bg-[#111A2E] border-[#F2542D] text-white'
+                          : 'bg-[#101726]/60 border-slate-800 text-slate-400 hover:text-slate-200'
+                      }`}
+                      type="button"
+                    >
+                      <span>{role}</span>
+                      {isChecked && <Check className="w-3.5 h-3.5 text-[#F2542D] stroke-[3]" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 3. Notification Channels & 4. Compliance */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="block font-bold text-white text-xs">3. Kanal Notifikasi</label>
+                <div className="space-y-1.5">
+                  {['Notifikasi dalam aplikasi', 'Email', 'Push Notification', 'Tidak perlu notifikasi'].map((item) => {
+                    const isChecked = data.q27_notificationChannels.includes(item);
+                    return (
+                      <button
+                        key={item}
+                        onClick={() => {
+                          const updated = isChecked
+                            ? data.q27_notificationChannels.filter(x => x !== item)
+                            : [...data.q27_notificationChannels, item];
+                          onChange({ q27_notificationChannels: updated });
+                        }}
+                        className={`w-full p-2.5 rounded-lg border text-left text-xs font-medium transition flex items-center justify-between ${
+                          isChecked ? 'bg-[#111A2E] border-[#F2542D] text-white' : 'bg-[#101726]/60 border-slate-800 text-slate-400'
+                        }`}
+                        type="button"
+                      >
+                        <span>{item}</span>
+                        {isChecked && <Check className="w-3.5 h-3.5 text-[#F2542D] stroke-[3]" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="block font-bold text-white text-xs">4. Kepatuhan &amp; Privasi Data</label>
+                <div className="space-y-1.5">
+                  {['Perlindungan data pribadi (mis. UU PDP/GDPR)', 'Audit trail wajib', 'Tidak ada kebutuhan khusus', 'Lainnya'].map((item) => {
+                    const isChecked = data.q28_complianceNeeds.includes(item);
+                    return (
+                      <button
+                        key={item}
+                        onClick={() => {
+                          const updated = isChecked
+                            ? data.q28_complianceNeeds.filter(x => x !== item)
+                            : [...data.q28_complianceNeeds, item];
+                          onChange({ q28_complianceNeeds: updated });
+                        }}
+                        className={`w-full p-2.5 rounded-lg border text-left text-xs font-medium transition flex items-center justify-between ${
+                          isChecked ? 'bg-[#111A2E] border-[#F2542D] text-white' : 'bg-[#101726]/60 border-slate-800 text-slate-400'
+                        }`}
+                        type="button"
+                      >
+                        <span>{item}</span>
+                        {isChecked && <Check className="w-3.5 h-3.5 text-[#F2542D] stroke-[3]" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* 5. Support Model */}
+            <div className="space-y-2.5">
+              <label className="block font-bold text-white text-sm">
+                5. Model dukungan pengguna (support)?
+              </label>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                {['Self-service (FAQ/Docs)', 'Email Support', 'Live Chat', 'Tidak ada dukungan formal'].map((model) => {
+                  const isSelected = data.q29_supportModel === model;
+                  return (
+                    <button
+                      key={model}
+                      onClick={() => onChange({ q29_supportModel: model })}
+                      className={`p-3 rounded-xl border text-center text-xs font-medium transition ${
+                        isSelected
+                          ? 'bg-[#111A2E] border-[#F2542D] text-white'
+                          : 'bg-[#101726]/60 border-slate-800 text-slate-400 hover:text-slate-200'
+                      }`}
+                      type="button"
+                    >
+                      {model}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 6. Post-MVP Plan */}
+            <div className="space-y-2">
+              <label className="block font-bold text-white text-sm">
+                6. Rencana pengembangan setelah versi pertama (V2 dan seterusnya)?
+              </label>
+              <textarea
+                rows={3}
+                maxLength={1000}
+                value={data.q30_postMvpPlan}
+                onChange={(e) => onChange({ q30_postMvpPlan: e.target.value })}
+                placeholder="Kolaborasi multi-user, integrasi pihak ketiga tambahan, versi mobile native..."
+                className="w-full bg-[#101726] border border-slate-700/80 rounded-xl p-4 text-xs sm:text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-[#F2542D] transition leading-relaxed"
+              />
+              <div className="text-right text-[11px] font-mono text-slate-500">
+                {data.q30_postMvpPlan.length} / 1000 karakter
+              </div>
+            </div>
+
+            {/* Bottom notification card */}
+            <div className="p-3.5 rounded-xl bg-[#0E1528] border border-slate-800 text-slate-400 text-xs flex items-center gap-3">
+              <div className="w-6 h-6 rounded-lg bg-[#F2542D]/20 text-[#F2542D] flex items-center justify-center shrink-0">
+                <Sparkles className="w-3.5 h-3.5" />
+              </div>
+              <p>
+                Semua jawaban akan digabungkan untuk menghasilkan PRD lengkap mengikuti struktur Master PRD RotaLogic, ERD, skema SQL, arsitektur sistem, dan task list sprint.
+              </p>
+            </div>
+
+            {/* Final Action Bar */}
+            <div className="flex items-center justify-between pt-6 border-t border-slate-800">
+              <button
+                onClick={() => onNavigateGroup(5)}
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border border-slate-700 text-slate-300 hover:text-white text-xs font-semibold"
+                type="button"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Kembali (5/6)</span>
               </button>
 
               <button

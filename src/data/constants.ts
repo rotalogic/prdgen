@@ -272,5 +272,14 @@ export const INITIAL_INTERVIEW_DATA: InterviewData = {
   q20_storage: 's3_r2',
   q21_observability: ['Sentry', 'PostHog'],
   q22_codeStandards: ['TypeScript Strict Mode', 'Vitest / Jest', 'ESLint + Prettier Config'],
-  q23_technicalNotes: 'Gunakan Tailwind CSS, Next.js App Router, arsitektur modular tanpa library usang, dan clean component separation.'
+  q23_technicalNotes: 'Gunakan Tailwind CSS, Next.js App Router, arsitektur modular tanpa library usang, dan clean component separation.',
+
+  // Kelompok 6/6
+  q24_businessModel: 'Freemium',
+  q25_pricingNotes: 'Gratis untuk fitur inti; paket berbayar membuka export tanpa batas dan penyimpanan cloud jangka panjang.',
+  q26_teamRoles: ['Owner Tunggal (tanpa role)'],
+  q27_notificationChannels: ['Notifikasi dalam aplikasi'],
+  q28_complianceNeeds: ['Perlindungan data pribadi (mis. UU PDP/GDPR)'],
+  q29_supportModel: 'Email Support',
+  q30_postMvpPlan: 'Kolaborasi tim multi-user, integrasi langsung ke GitHub/Jira, dan versi riwayat PRD dengan perbandingan antar revisi.'
 };
