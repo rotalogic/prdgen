@@ -143,6 +143,8 @@ export interface GeneratedPRDResult {
   prdMarkdown: string;
   sqlSchema: string;
   mermaidErd: string;
+  mermaidArchitecture: string;
+  entities: EntitySchema[];
   tasks: TaskItem[];
   architectureSummary: {
     overview: string;
@@ -150,6 +152,9 @@ export interface GeneratedPRDResult {
     backendLayer: string;
     databaseLayer: string;
     deploymentLayer: string;
+    securityLayer: string;
+    dataFlow: string;
+    scalingNotes: string;
     services: string[];
   };
   risks: RiskItem[];

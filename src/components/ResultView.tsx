@@ -36,7 +36,18 @@ export const ResultView: React.FC<ResultViewProps> = ({
   const [isEditingPrd, setIsEditingPrd] = useState(false);
   const [customPrdText, setCustomPrdText] = useState(result.prdMarkdown);
   const [erdMode, setErdMode] = useState<'visual' | 'mermaid'>('visual');
+  const [archMode, setArchMode] = useState<'visual' | 'mermaid'>('visual');
   const [sprintFilter, setSprintFilter] = useState<number | 'all'>('all');
+
+  // FK inference for the ERD visual canvas — mirrors data/generator.ts so
+  // the canvas shows the project's real entities, not a fixed example.
+  const entityNames = new Set(result.entities.map(e => e.name));
+  const erdRelations = result.entities.flatMap(entity =>
+    entity.fields
+      .filter(f => !f.isPrimaryKey && f.name.endsWith('_id'))
+      .map(f => ({ from: f.name.replace(/_id$/, 's'), to: entity.name, field: f.name }))
+      .filter(rel => entityNames.has(rel.from) && rel.from !== rel.to)
+  );
 
   const handleCopy = (text: string, sectionKey: string) => {
     navigator.clipboard.writeText(text);
@@ -373,102 +384,47 @@ export const ResultView: React.FC<ResultViewProps> = ({
             </div>
 
             {erdMode === 'visual' ? (
-              <div className="erd-grid bg-[#070A14] border border-slate-800 rounded-xl p-6 min-h-[380px] flex flex-wrap gap-6 items-start justify-center">
-                {/* Users table card */}
-                <div className="w-64 bg-[#101728] border border-slate-700 rounded-xl shadow-xl overflow-hidden font-mono text-xs">
-                  <div className="bg-[#152038] px-3.5 py-2 border-b border-slate-700 flex items-center justify-between">
-                    <span className="font-bold text-white">users</span>
-                    <span className="text-[10px] text-slate-400">TABLE</span>
-                  </div>
-                  <div className="p-3 space-y-1.5 text-[11px]">
-                    <div className="flex items-center justify-between text-amber-400">
-                      <span>id [PK]</span>
-                      <span>UUID</span>
+              <div className="erd-grid bg-[#070A14] border border-slate-800 rounded-xl p-6 min-h-[380px] space-y-6">
+                <div className="flex flex-wrap gap-6 items-start justify-center">
+                  {result.entities.map((entity) => (
+                    <div key={entity.id} className="w-64 bg-[#101728] border border-slate-700 rounded-xl shadow-xl overflow-hidden font-mono text-xs">
+                      <div className="bg-[#152038] px-3.5 py-2 border-b border-slate-700 flex items-center justify-between">
+                        <span className="font-bold text-white">{entity.name}</span>
+                        <span className="text-[10px] text-slate-400">TABLE</span>
+                      </div>
+                      <div className="p-3 space-y-1.5 text-[11px]">
+                        {entity.fields.map((f) => {
+                          const isFk = !f.isPrimaryKey && f.name.endsWith('_id');
+                          return (
+                            <div
+                              key={f.id}
+                              className={`flex items-center justify-between ${
+                                f.isPrimaryKey ? 'text-amber-400' : isFk ? 'text-sky-400' : 'text-slate-300'
+                              }`}
+                            >
+                              <span>{f.name}{f.isPrimaryKey ? ' [PK]' : isFk ? ' [FK]' : ''}</span>
+                              <span>{f.type}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
-                    <div className="flex items-center justify-between text-slate-300">
-                      <span>name</span>
-                      <span>VARCHAR</span>
-                    </div>
-                    <div className="flex items-center justify-between text-slate-300">
-                      <span>email</span>
-                      <span>VARCHAR</span>
-                    </div>
-                    <div className="flex items-center justify-between text-slate-400">
-                      <span>created_at</span>
-                      <span>TIMESTAMP</span>
-                    </div>
-                  </div>
+                  ))}
                 </div>
 
-                {/* Connector arrow */}
-                <div className="self-center font-mono text-slate-500 text-xs px-2 hidden sm:block">
-                  1 ──&lt; N
-                </div>
-
-                {/* Projects table card */}
-                <div className="w-64 bg-[#101728] border border-slate-700 rounded-xl shadow-xl overflow-hidden font-mono text-xs">
-                  <div className="bg-[#152038] px-3.5 py-2 border-b border-slate-700 flex items-center justify-between">
-                    <span className="font-bold text-white">projects</span>
-                    <span className="text-[10px] text-slate-400">TABLE</span>
+                {erdRelations.length > 0 && (
+                  <div className="border-t border-slate-800 pt-4 space-y-1.5">
+                    <span className="text-[10px] font-mono uppercase tracking-widest text-slate-500">Relasi Terdeteksi</span>
+                    {erdRelations.map((rel, i) => (
+                      <div key={i} className="text-[11px] font-mono text-slate-400">
+                        <span className="text-white">{rel.from}</span>
+                        <span className="text-[#F2542D] mx-1.5">──&lt; N</span>
+                        <span className="text-white">{rel.to}</span>
+                        <span className="text-slate-600"> via {rel.field}</span>
+                      </div>
+                    ))}
                   </div>
-                  <div className="p-3 space-y-1.5 text-[11px]">
-                    <div className="flex items-center justify-between text-amber-400">
-                      <span>id [PK]</span>
-                      <span>UUID</span>
-                    </div>
-                    <div className="flex items-center justify-between text-sky-400">
-                      <span>user_id [FK]</span>
-                      <span>UUID</span>
-                    </div>
-                    <div className="flex items-center justify-between text-slate-300">
-                      <span>name</span>
-                      <span>VARCHAR</span>
-                    </div>
-                    <div className="flex items-center justify-between text-slate-300">
-                      <span>description</span>
-                      <span>TEXT</span>
-                    </div>
-                    <div className="flex items-center justify-between text-slate-400">
-                      <span>created_at</span>
-                      <span>TIMESTAMP</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Connector arrow */}
-                <div className="self-center font-mono text-slate-500 text-xs px-2 hidden sm:block">
-                  1 ──&lt; N
-                </div>
-
-                {/* Tasks table card */}
-                <div className="w-64 bg-[#101728] border border-slate-700 rounded-xl shadow-xl overflow-hidden font-mono text-xs">
-                  <div className="bg-[#152038] px-3.5 py-2 border-b border-slate-700 flex items-center justify-between">
-                    <span className="font-bold text-white">tasks</span>
-                    <span className="text-[10px] text-slate-400">TABLE</span>
-                  </div>
-                  <div className="p-3 space-y-1.5 text-[11px]">
-                    <div className="flex items-center justify-between text-amber-400">
-                      <span>id [PK]</span>
-                      <span>UUID</span>
-                    </div>
-                    <div className="flex items-center justify-between text-sky-400">
-                      <span>project_id [FK]</span>
-                      <span>UUID</span>
-                    </div>
-                    <div className="flex items-center justify-between text-slate-300">
-                      <span>title</span>
-                      <span>VARCHAR</span>
-                    </div>
-                    <div className="flex items-center justify-between text-slate-300">
-                      <span>status</span>
-                      <span>VARCHAR</span>
-                    </div>
-                    <div className="flex items-center justify-between text-slate-400">
-                      <span>created_at</span>
-                      <span>TIMESTAMP</span>
-                    </div>
-                  </div>
-                </div>
+                )}
               </div>
             ) : (
               <pre className="p-4 rounded-xl bg-[#080C16] border border-slate-800 font-mono text-xs text-slate-200 overflow-x-auto leading-relaxed">
@@ -608,71 +564,135 @@ export const ResultView: React.FC<ResultViewProps> = ({
            ========================================================================= */}
         {activeTab === 'architecture' && (
           <div className="space-y-6">
-            <div className="border-b border-slate-800 pb-3">
-              <h3 className="text-base font-bold text-white">Arsitektur Sistem &amp; Data Flow</h3>
-              <p className="text-xs text-slate-400 mt-0.5">{result.architectureSummary.overview}</p>
-            </div>
-
-            {/* Visual Architecture Layers Flow */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              {/* Layer 1: Client / Frontend */}
-              <div className="p-4 rounded-xl bg-[#101728] border border-slate-700 space-y-2">
-                <div className="text-[10px] font-mono text-[#F2542D] uppercase font-bold tracking-wider">
-                  LAYER 1 • CLIENT
-                </div>
-                <h4 className="font-bold text-white text-sm">{result.frontend}</h4>
-                <p className="text-xs text-slate-400 leading-relaxed">
-                  {result.architectureSummary.frontendLayer}
-                </p>
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3 flex-wrap gap-3">
+              <div>
+                <h3 className="text-base font-bold text-white">Arsitektur Sistem &amp; Data Flow</h3>
+                <p className="text-xs text-slate-400 mt-0.5">{result.architectureSummary.overview}</p>
               </div>
-
-              {/* Layer 2: API & Logic */}
-              <div className="p-4 rounded-xl bg-[#101728] border border-slate-700 space-y-2">
-                <div className="text-[10px] font-mono text-sky-400 uppercase font-bold tracking-wider">
-                  LAYER 2 • BACKEND / API
-                </div>
-                <h4 className="font-bold text-white text-sm">{result.backend}</h4>
-                <p className="text-xs text-slate-400 leading-relaxed">
-                  {result.architectureSummary.backendLayer}
-                </p>
-              </div>
-
-              {/* Layer 3: Database Storage */}
-              <div className="p-4 rounded-xl bg-[#101728] border border-slate-700 space-y-2">
-                <div className="text-[10px] font-mono text-emerald-400 uppercase font-bold tracking-wider">
-                  LAYER 3 • DATABASE
-                </div>
-                <h4 className="font-bold text-white text-sm">{result.database}</h4>
-                <p className="text-xs text-slate-400 leading-relaxed">
-                  {result.architectureSummary.databaseLayer}
-                </p>
-              </div>
-
-              {/* Layer 4: Cloud Deployment */}
-              <div className="p-4 rounded-xl bg-[#101728] border border-slate-700 space-y-2">
-                <div className="text-[10px] font-mono text-amber-400 uppercase font-bold tracking-wider">
-                  LAYER 4 • CLOUD RUNTIME
-                </div>
-                <h4 className="font-bold text-white text-sm">{result.deployment}</h4>
-                <p className="text-xs text-slate-400 leading-relaxed">
-                  {result.architectureSummary.deploymentLayer}
-                </p>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setArchMode('visual')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-mono transition ${
+                    archMode === 'visual' ? 'bg-[#F2542D] text-white font-bold' : 'bg-slate-800 text-slate-300'
+                  }`}
+                  type="button"
+                >
+                  Visual Layers
+                </button>
+                <button
+                  onClick={() => setArchMode('mermaid')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-mono transition ${
+                    archMode === 'mermaid' ? 'bg-[#F2542D] text-white font-bold' : 'bg-slate-800 text-slate-300'
+                  }`}
+                  type="button"
+                >
+                  Mermaid Source
+                </button>
+                <button
+                  onClick={() => handleCopy(result.mermaidArchitecture, 'arch-mermaid')}
+                  className="px-3 py-1.5 rounded-lg border border-slate-700 text-slate-300 hover:text-white text-xs flex items-center gap-1.5"
+                  type="button"
+                >
+                  {copiedSection === 'arch-mermaid' ? <CheckCheck className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span>{copiedSection === 'arch-mermaid' ? 'Tersalin!' : 'Salin Mermaid'}</span>
+                </button>
               </div>
             </div>
 
-            {/* Connected Services Badge List */}
-            <div className="p-4 rounded-xl bg-[#090E1A] border border-slate-800 space-y-2.5">
-              <span className="text-xs font-mono font-bold text-slate-400 uppercase tracking-wider">
-                Third-Party &amp; Supporting Services
-              </span>
-              <div className="flex flex-wrap gap-2">
-                {result.architectureSummary.services.map((svc, sIdx) => (
-                  <span key={sIdx} className="px-2.5 py-1 rounded-lg bg-slate-800 border border-slate-700 text-slate-200 text-xs font-mono">
-                    {svc}
+            {archMode === 'mermaid' ? (
+              <pre className="p-4 rounded-xl bg-[#080C16] border border-slate-800 font-mono text-xs text-slate-200 overflow-x-auto leading-relaxed">
+                {result.mermaidArchitecture}
+              </pre>
+            ) : (
+              <>
+                {/* Visual Architecture Layers Flow */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="p-4 rounded-xl bg-[#101728] border border-slate-700 space-y-2">
+                    <div className="text-[10px] font-mono text-[#F2542D] uppercase font-bold tracking-wider">
+                      LAYER 1 • CLIENT
+                    </div>
+                    <h4 className="font-bold text-white text-sm">{result.frontend}</h4>
+                    <p className="text-xs text-slate-400 leading-relaxed">
+                      {result.architectureSummary.frontendLayer}
+                    </p>
+                  </div>
+
+                  <div className="p-4 rounded-xl bg-[#101728] border border-slate-700 space-y-2">
+                    <div className="text-[10px] font-mono text-sky-400 uppercase font-bold tracking-wider">
+                      LAYER 2 • BACKEND / API
+                    </div>
+                    <h4 className="font-bold text-white text-sm">{result.backend}</h4>
+                    <p className="text-xs text-slate-400 leading-relaxed">
+                      {result.architectureSummary.backendLayer}
+                    </p>
+                  </div>
+
+                  <div className="p-4 rounded-xl bg-[#101728] border border-slate-700 space-y-2">
+                    <div className="text-[10px] font-mono text-emerald-400 uppercase font-bold tracking-wider">
+                      LAYER 3 • DATABASE
+                    </div>
+                    <h4 className="font-bold text-white text-sm">{result.database}</h4>
+                    <p className="text-xs text-slate-400 leading-relaxed">
+                      {result.architectureSummary.databaseLayer}
+                    </p>
+                  </div>
+
+                  <div className="p-4 rounded-xl bg-[#101728] border border-slate-700 space-y-2">
+                    <div className="text-[10px] font-mono text-amber-400 uppercase font-bold tracking-wider">
+                      LAYER 4 • CLOUD RUNTIME
+                    </div>
+                    <h4 className="font-bold text-white text-sm">{result.deployment}</h4>
+                    <p className="text-xs text-slate-400 leading-relaxed">
+                      {result.architectureSummary.deploymentLayer}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Security, Data Flow & Scaling */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="p-4 rounded-xl bg-[#101728] border border-slate-700 space-y-2">
+                    <div className="text-[10px] font-mono text-rose-400 uppercase font-bold tracking-wider">
+                      Keamanan
+                    </div>
+                    <p className="text-xs text-slate-300 leading-relaxed">
+                      {result.architectureSummary.securityLayer}
+                    </p>
+                  </div>
+
+                  <div className="p-4 rounded-xl bg-[#101728] border border-slate-700 space-y-2">
+                    <div className="text-[10px] font-mono text-violet-400 uppercase font-bold tracking-wider">
+                      Alur Data
+                    </div>
+                    <p className="text-xs text-slate-300 leading-relaxed">
+                      {result.architectureSummary.dataFlow}
+                    </p>
+                  </div>
+
+                  <div className="p-4 rounded-xl bg-[#101728] border border-slate-700 space-y-2">
+                    <div className="text-[10px] font-mono text-teal-400 uppercase font-bold tracking-wider">
+                      Skalabilitas
+                    </div>
+                    <p className="text-xs text-slate-300 leading-relaxed">
+                      {result.architectureSummary.scalingNotes}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Connected Services Badge List */}
+                <div className="p-4 rounded-xl bg-[#090E1A] border border-slate-800 space-y-2.5">
+                  <span className="text-xs font-mono font-bold text-slate-400 uppercase tracking-wider">
+                    Third-Party &amp; Supporting Services
                   </span>
-                ))}
-              </div>
-            </div>
+                  <div className="flex flex-wrap gap-2">
+                    {result.architectureSummary.services.map((svc, sIdx) => (
+                      <span key={sIdx} className="px-2.5 py-1 rounded-lg bg-slate-800 border border-slate-700 text-slate-200 text-xs font-mono">
+                        {svc}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         )}
 

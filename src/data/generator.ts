@@ -108,6 +108,22 @@ export function generatePRDFromInputs(
 
   const sqlSchema = sqlLines.join('\n');
 
+  // Infer FK relationships from real field names (same convention the SQL
+  // generator uses: a `<x>_id` field points at a `<x>s` table) instead of
+  // ever hardcoding which entities exist — every project has different ones.
+  const entityNames = new Set(interview.q8_entities.map(e => e.name));
+  type InferredRelation = { from: string; to: string; field: string };
+  const inferredRelations: InferredRelation[] = [];
+  interview.q8_entities.forEach(entity => {
+    entity.fields.forEach(f => {
+      if (f.isPrimaryKey || !f.name.endsWith('_id')) return;
+      const refTable = f.name.replace(/_id$/, 's');
+      if (entityNames.has(refTable) && refTable !== entity.name) {
+        inferredRelations.push({ from: refTable, to: entity.name, field: f.name });
+      }
+    });
+  });
+
   // Mermaid ERD
   let mermaidLines: string[] = ['erDiagram'];
   interview.q8_entities.forEach(entity => {
@@ -118,10 +134,48 @@ export function generatePRDFromInputs(
     });
     mermaidLines.push(`    }`);
   });
-  // Default relationship lines
-  mermaidLines.push(`    users ||--o{ projects : "creates"`);
-  mermaidLines.push(`    projects ||--o{ tasks : "contains"`);
+  inferredRelations.forEach(rel => {
+    mermaidLines.push(`    ${rel.from} ||--o{ ${rel.to} : "${rel.field}"`);
+  });
   const mermaidErd = mermaidLines.join('\n');
+
+  // Mermaid system architecture diagram — built from the same interview
+  // answers as the tables below, not a fixed diagram every project gets.
+  const authLabel = interview.q18_auth || 'NextAuth / Auth.js';
+  const storageLabel = interview.q20_storage || 'Cloudflare R2';
+  const apiArchLabel = interview.q19_apiArch || 'REST API';
+  const integrations = (interview.q14_integrations || []).filter(Boolean);
+  const observability = (interview.q21_observability || []).filter(Boolean);
+
+  const archLines: string[] = ['flowchart TD'];
+  archLines.push(`    Client["${frontend}<br/><i>Client</i>"]`);
+  archLines.push(`    API["${backend}<br/><i>${apiArchLabel}</i>"]`);
+  archLines.push(`    DB[("${database}")]`);
+  archLines.push(`    Auth["${authLabel}"]`);
+  archLines.push(`    Storage["${storageLabel}"]`);
+  archLines.push(`    Deploy(["${deployment}"])`);
+  archLines.push('');
+  archLines.push('    Client -->|Request| API');
+  archLines.push('    API -->|Query| DB');
+  archLines.push('    API --> Auth');
+  archLines.push('    API --> Storage');
+  archLines.push('    Deploy -.->|hosts| API');
+
+  if (integrations.length > 0) {
+    archLines.push('    subgraph Integrasi["Layanan Eksternal"]');
+    integrations.forEach((name, i) => archLines.push(`        Int${i}["${name}"]`));
+    archLines.push('    end');
+    archLines.push('    API --> Integrasi');
+  }
+
+  if (observability.length > 0) {
+    archLines.push('    subgraph Observability["Observability"]');
+    observability.forEach((name, i) => archLines.push(`        Obs${i}["${name}"]`));
+    archLines.push('    end');
+    archLines.push('    API -.->|logs & metrics| Observability');
+  }
+
+  const mermaidArchitecture = archLines.join('\n');
 
   // Generate actionable tasks & sprints
   const tasks: TaskItem[] = [
@@ -241,6 +295,26 @@ Fitur berikut sengaja ditunda agar target rilis pertama tercapai:
 | **Observability** | ${interview.q21_observability.join(', ') || 'Sentry, PostHog'} | Log & Error Analytics |
 | **Quality Standards** | ${interview.q22_codeStandards.join(', ') || 'TypeScript Strict'} | Standar Koding Developer |
 
+### 4.1 Diagram Arsitektur Sistem
+\`\`\`mermaid
+${mermaidArchitecture}
+\`\`\`
+
+### 4.2 Alur Data (Request Lifecycle)
+1. **${frontend}** mengirim request ke **${backend}** melalui ${apiArchLabel}.
+2. ${backend} memvalidasi sesi pengguna lewat **${authLabel}** sebelum memproses permintaan.
+3. Query/mutasi data dieksekusi ke **${database}**${integrations.length > 0 ? `; permintaan yang melibatkan ${integrations.join(', ')} diteruskan ke layanan eksternal terkait` : ''}.
+4. Aset media (bila ada) disimpan/diambil dari **${storageLabel}**.
+5. Response dikembalikan ke client${observability.length > 0 ? `, sementara metrik & error tercatat otomatis ke ${observability.join(', ')}` : ''}.
+
+### 4.3 Keamanan
+- Autentikasi & sesi ditangani oleh ${authLabel}.
+- ${interview.q15_specialRequirements.join(', ') || 'Enkripsi data in-transit (TLS) dan at-rest'}.
+- Setiap request tervalidasi di layer ${backend} sebelum menyentuh ${database} — tidak ada akses langsung dari client ke database.
+
+### 4.4 Skalabilitas
+Ditargetkan untuk ${interview.q12_userEstimate || 'skala awal (ratusan pengguna aktif)'}, dengan batasan infrastruktur: ${interview.q11_infraConstraints.join(', ') || 'belum ada batasan khusus'}. ${deployment} dipilih agar dapat diskalakan mengikuti pertumbuhan trafik tanpa migrasi platform di awal.
+
 ---
 
 ## 5. Model Data & Relasi
@@ -281,18 +355,23 @@ ${interview.q23_technicalNotes || 'Gunakan standard modular TypeScript dengan pe
     prdMarkdown,
     sqlSchema,
     mermaidErd,
+    mermaidArchitecture,
+    entities: interview.q8_entities,
     tasks,
     architectureSummary: {
       overview: `${prodType} menggunakan ${frontend} dengan backend ${backend} dan database ${database}.`,
       frontendLayer: `${frontend} dengan Tailwind CSS untuk responsive rendering & modular UI.`,
-      backendLayer: `${backend} dengan gaya arsitektur ${interview.q19_apiArch || 'Server Actions'}.`,
-      databaseLayer: `${database} dengan skema ternormalisasi dan relasi foreign-key.`,
+      backendLayer: `${backend} dengan gaya arsitektur ${apiArchLabel}.`,
+      databaseLayer: `${database} dengan skema ternormalisasi dan relasi foreign-key${inferredRelations.length > 0 ? ` (${inferredRelations.length} relasi terdeteksi dari model data)` : ''}.`,
       deploymentLayer: `Dihosting di ${deployment} dengan integrasi CI/CD otomatis.`,
+      securityLayer: `Autentikasi via ${authLabel}. Semua akses data melalui ${backend} — client tidak pernah terhubung langsung ke ${database}. ${interview.q15_specialRequirements.join(', ') || 'Enkripsi in-transit (TLS) dan at-rest'}.`,
+      dataFlow: `${frontend} → ${apiArchLabel} (${backend}) → ${database}, dengan sesi diverifikasi di setiap request via ${authLabel}${observability.length > 0 ? `. Metrik & error dilacak lewat ${observability.join(', ')}` : ''}.`,
+      scalingNotes: `Ditargetkan untuk ${interview.q12_userEstimate || 'skala awal'}. Batasan infrastruktur: ${interview.q11_infraConstraints.join(', ') || 'belum ditentukan'}.`,
       services: [
-        ...(interview.q14_integrations || []),
-        interview.q18_auth ? `Auth: ${interview.q18_auth}` : 'Auth: NextAuth',
-        interview.q20_storage ? `Storage: ${interview.q20_storage}` : 'Storage: Cloud R2',
-        ...(interview.q21_observability || [])
+        ...integrations,
+        `Auth: ${authLabel}`,
+        `Storage: ${storageLabel}`,
+        ...observability
       ]
     },
     risks
