@@ -4,6 +4,57 @@
 // it silently fell back to pg's localhost default.
 import "dotenv/config";
 
+// ── Fix VPS (undici/global fetch ETIMEDOUT — IPv6) → node:https family 4 ──
+// Google OAuth token exchange & panggilan Gemini/Claude/OpenAI gagal tanpa ini.
+import { request as httpsRequest } from "node:https";
+import { request as httpRequest } from "node:http";
+
+function fetchViaNode(url: any, init: any = {}) {
+  return new Promise((resolve, reject) => {
+    const u = new URL(String(url));
+    const isHttps = u.protocol === "https:";
+    const mod = isHttps ? httpsRequest : httpRequest;
+    let headers: Record<string, string> = {};
+    if (init.headers instanceof Headers) headers = Object.fromEntries(init.headers.entries());
+    else if (init.headers) headers = { ...init.headers };
+    const body = init.body != null ? Buffer.from(String(init.body)) : null;
+    if (body && !headers["content-length"]) headers["content-length"] = String(body.length);
+    const req = mod(
+      {
+        hostname: u.hostname,
+        port: u.port || (isHttps ? 443 : 80),
+        path: u.pathname + u.search,
+        method: init.method || (body ? "POST" : "GET"),
+        headers,
+        family: 4,
+        timeout: 30000,
+      },
+      (res) => {
+        const chunks: Buffer[] = [];
+        res.on("data", (c) => chunks.push(c));
+        res.on("end", () => {
+          const text = Buffer.concat(chunks).toString();
+          resolve({
+            ok: res.statusCode! >= 200 && res.statusCode! < 300,
+            status: res.statusCode,
+            statusText: res.statusMessage || "",
+            headers: new Headers(res.headers as any),
+            url: String(url),
+            async json() { return JSON.parse(text); },
+            async text() { return text; },
+          });
+        });
+      }
+    );
+    req.on("timeout", () => req.destroy(new Error("timeout")));
+    req.on("error", reject);
+    if (body) req.write(body);
+    req.end();
+  });
+}
+// ponytail: aktif hanya di VPS ini (undici ETIMEDOUT IPv6); dev lokal tak terpengaruh
+if (process.env.FORCE_IPV4_FETCH === "1") globalThis.fetch = fetchViaNode as any;
+
 import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
@@ -12,7 +63,7 @@ import { auth, isGoogleAuthConfigured } from "./src/lib/auth";
 import { pool, ensureAppTables } from "./src/lib/db";
 
 const app = express();
-const PORT = 3000;
+const PORT = Number(process.env.PORT) || 3000;
 
 // Better Auth handles its own body parsing — must be mounted before
 // express.json() or it will hang trying to read an already-consumed stream.
