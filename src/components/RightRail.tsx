@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { WizardStep, InterviewGroupIndex } from '../types';
-import { Check, Globe, Database, Server, Lightbulb, Download, Sparkles } from 'lucide-react';
+import { Check, Globe, Database, Server, Lightbulb, Download, Sparkles, ChevronDown, FileText, FileArchive } from 'lucide-react';
 import { PRODUCT_TYPES, FRONTEND_OPTIONS, DATABASE_OPTIONS } from '../data/constants';
 
 interface RightRailProps {
@@ -11,7 +11,8 @@ interface RightRailProps {
   databaseId: string;
   deployment?: string;
   onEditStack: () => void;
-  onDownloadAll?: () => void;
+  onDownloadMarkdown?: () => void;
+  onDownloadZip?: () => void;
   onSelectInterviewGroup?: (group: InterviewGroupIndex) => void;
 }
 
@@ -23,9 +24,11 @@ export const RightRail: React.FC<RightRailProps> = ({
   databaseId,
   deployment = 'Vercel (Edge/Node)',
   onEditStack,
-  onDownloadAll,
+  onDownloadMarkdown,
+  onDownloadZip,
   onSelectInterviewGroup
 }) => {
+  const [isDownloadMenuOpen, setIsDownloadMenuOpen] = useState(false);
   const prodType = PRODUCT_TYPES.find(p => p.id === productTypeId)?.title || 'Website / Web App';
   const frontend = FRONTEND_OPTIONS.find(f => f.id === frontendId)?.title || 'Next.js (React)';
   const db = DATABASE_OPTIONS.find(d => d.id === databaseId)?.title || 'PostgreSQL';
@@ -324,15 +327,48 @@ export const RightRail: React.FC<RightRailProps> = ({
       </div>
 
       {/* Big Download All Button */}
-      {onDownloadAll && (
-        <button
-          onClick={onDownloadAll}
-          className="w-full py-3.5 px-4 rounded-xl bg-[#F2542D] hover:bg-[#ff6742] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-[0_0_25px_rgba(242,84,45,0.4)] hover:shadow-[0_0_35px_rgba(242,84,45,0.6)] transition duration-200"
-          type="button"
-        >
-          <Download className="w-4 h-4" />
-          <span>Unduh Semua Dokumen (.ZIP / .MD)</span>
-        </button>
+      {(onDownloadMarkdown || onDownloadZip) && (
+        <div className="relative">
+          <button
+            onClick={() => setIsDownloadMenuOpen((v) => !v)}
+            className="w-full py-3.5 px-4 rounded-xl bg-[#F2542D] hover:bg-[#ff6742] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-[0_0_25px_rgba(242,84,45,0.4)] hover:shadow-[0_0_35px_rgba(242,84,45,0.6)] transition duration-200"
+            type="button"
+          >
+            <Download className="w-4 h-4" />
+            <span>Unduh Semua Dokumen</span>
+            <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isDownloadMenuOpen ? 'rotate-180' : ''}`} />
+          </button>
+
+          {isDownloadMenuOpen && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setIsDownloadMenuOpen(false)} />
+              <div className="absolute bottom-full left-0 right-0 mb-2 p-1.5 rounded-xl bg-[#0E1526] border border-slate-700 shadow-2xl z-50 text-slate-200 space-y-1">
+                <button
+                  onClick={() => { setIsDownloadMenuOpen(false); onDownloadMarkdown?.(); }}
+                  type="button"
+                  className="w-full flex items-start gap-2.5 px-3 py-2.5 rounded-lg text-left hover:bg-slate-800 transition"
+                >
+                  <FileText className="w-4 h-4 text-[#F2542D] mt-0.5 shrink-0" />
+                  <span>
+                    <span className="block text-xs font-semibold text-white">Satu file Markdown (.md)</span>
+                    <span className="block text-[11px] text-slate-400">Semua dokumen digabung jadi satu file</span>
+                  </span>
+                </button>
+                <button
+                  onClick={() => { setIsDownloadMenuOpen(false); onDownloadZip?.(); }}
+                  type="button"
+                  className="w-full flex items-start gap-2.5 px-3 py-2.5 rounded-lg text-left hover:bg-slate-800 transition"
+                >
+                  <FileArchive className="w-4 h-4 text-[#F2542D] mt-0.5 shrink-0" />
+                  <span>
+                    <span className="block text-xs font-semibold text-white">Arsip ZIP (.zip)</span>
+                    <span className="block text-[11px] text-slate-400">PRD, ERD, arsitektur, SQL, task list &amp; risiko — file terpisah</span>
+                  </span>
+                </button>
+              </div>
+            </>
+          )}
+        </div>
       )}
     </aside>
   );

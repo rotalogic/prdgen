@@ -13,23 +13,28 @@ import {
   Eye, 
   Layers, 
   Sparkles, 
-  Share2, 
+  Share2,
   ExternalLink,
   ChevronRight,
-  Filter
+  ChevronDown,
+  Filter,
+  FileArchive
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
 interface ResultViewProps {
   result: GeneratedPRDResult;
   onNavigateTab?: (tab: ResultTab) => void;
-  onDownloadAll: () => void;
+  onDownloadMarkdown: () => void;
+  onDownloadZip: () => void;
 }
 
 export const ResultView: React.FC<ResultViewProps> = ({
   result,
-  onDownloadAll
+  onDownloadMarkdown,
+  onDownloadZip
 }) => {
+  const [isDownloadMenuOpen, setIsDownloadMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<ResultTab>('ringkasan');
   const [copiedSection, setCopiedSection] = useState<string | null>(null);
   const [tasks, setTasks] = useState<TaskItem[]>(result.tasks);
@@ -108,14 +113,47 @@ export const ResultView: React.FC<ResultViewProps> = ({
               <span>{copiedSection === 'share' ? 'Link Tersalin!' : 'Bagikan'}</span>
             </button>
 
-            <button
-              onClick={onDownloadAll}
-              className="px-5 py-2 rounded-lg bg-[#F2542D] hover:bg-[#ff6742] text-white text-xs font-bold flex items-center gap-2 shadow-lg shadow-[#F2542D]/25 transition"
-              type="button"
-            >
-              <Download className="w-3.5 h-3.5" />
-              <span>Unduh Dokumen</span>
-            </button>
+            <div className="relative">
+              <button
+                onClick={() => setIsDownloadMenuOpen((v) => !v)}
+                className="px-5 py-2 rounded-lg bg-[#F2542D] hover:bg-[#ff6742] text-white text-xs font-bold flex items-center gap-2 shadow-lg shadow-[#F2542D]/25 transition"
+                type="button"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Unduh Dokumen</span>
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isDownloadMenuOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              {isDownloadMenuOpen && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setIsDownloadMenuOpen(false)} />
+                  <div className="absolute right-0 mt-2 w-64 p-1.5 rounded-xl bg-[#0E1526] border border-slate-700 shadow-2xl z-50 text-slate-200 space-y-1">
+                    <button
+                      onClick={() => { setIsDownloadMenuOpen(false); onDownloadMarkdown(); }}
+                      type="button"
+                      className="w-full flex items-start gap-2.5 px-3 py-2.5 rounded-lg text-left hover:bg-slate-800 transition"
+                    >
+                      <FileText className="w-4 h-4 text-[#F2542D] mt-0.5 shrink-0" />
+                      <span>
+                        <span className="block text-xs font-semibold text-white">Satu file Markdown (.md)</span>
+                        <span className="block text-[11px] text-slate-400">Semua dokumen digabung jadi satu file</span>
+                      </span>
+                    </button>
+                    <button
+                      onClick={() => { setIsDownloadMenuOpen(false); onDownloadZip(); }}
+                      type="button"
+                      className="w-full flex items-start gap-2.5 px-3 py-2.5 rounded-lg text-left hover:bg-slate-800 transition"
+                    >
+                      <FileArchive className="w-4 h-4 text-[#F2542D] mt-0.5 shrink-0" />
+                      <span>
+                        <span className="block text-xs font-semibold text-white">Arsip ZIP (.zip)</span>
+                        <span className="block text-[11px] text-slate-400">PRD, ERD, arsitektur, SQL, task list &amp; risiko — file terpisah</span>
+                      </span>
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
       </section>
