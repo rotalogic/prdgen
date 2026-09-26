@@ -426,23 +426,32 @@ function RbacModule({
   setAdmins: React.Dispatch<React.SetStateAction<AdminAccount[]>>;
 }) {
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [adding, setAdding] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     setAdding(true);
     setErrorMsg(null);
+    setSuccessMsg(null);
     try {
       const res = await fetch('/api/admin/admins', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, password: password || undefined }),
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error || 'Gagal menambahkan admin.');
       setAdmins((prev) => [...prev, body.admin]);
+      setSuccessMsg(
+        body.accountCreated
+          ? `Akun baru dibuat untuk ${body.admin.email}. Kasih tau password-nya ke orangnya secara langsung — tidak ditampilkan lagi di sini.`
+          : `${body.admin.email} ditambahkan sebagai admin. Dia login pakai password akun yang sudah ada.`
+      );
       setEmail('');
+      setPassword('');
     } catch (e: any) {
       setErrorMsg(e.message || 'Gagal menambahkan admin.');
     } finally {
@@ -468,20 +477,33 @@ function RbacModule({
         <p className="text-secondary mt-1">Email yang punya akses ke panel ini.</p>
       </div>
 
-      <form onSubmit={handleAdd} className="bg-card border border-border rounded-xl p-6 flex flex-col sm:flex-row gap-4">
-        {errorMsg && <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-xs sm:w-full">{errorMsg}</div>}
-        <input
-          type="email"
-          required
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="email@domain.com"
-          className="flex-1 bg-background border border-border rounded-lg px-4 py-2 text-primary font-mono text-sm"
-        />
-        <button type="submit" disabled={adding} className="bg-accent text-white font-bold px-6 py-2 rounded-lg text-sm flex items-center justify-center gap-2 disabled:opacity-60">
-          {adding ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-          Tambah Admin
-        </button>
+      <form onSubmit={handleAdd} className="bg-card border border-border rounded-xl p-6 space-y-4">
+        {errorMsg && <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-xs">{errorMsg}</div>}
+        {successMsg && <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs">{successMsg}</div>}
+        <div className="flex flex-col sm:flex-row gap-4">
+          <input
+            type="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="email@domain.com"
+            className="flex-1 bg-background border border-border rounded-lg px-4 py-2 text-primary font-mono text-sm"
+          />
+          <input
+            type="text"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Password (kalau akunnya belum ada)"
+            className="flex-1 bg-background border border-border rounded-lg px-4 py-2 text-primary font-mono text-sm"
+          />
+          <button type="submit" disabled={adding} className="bg-accent text-white font-bold px-6 py-2 rounded-lg text-sm flex items-center justify-center gap-2 disabled:opacity-60 whitespace-nowrap">
+            {adding ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+            Tambah Admin
+          </button>
+        </div>
+        <p className="text-[11px] text-secondary">
+          Kalau emailnya sudah punya akun di situs utama, kosongkan password — dia tetap login pakai password akun lamanya. Isi password (minimal 6 karakter) hanya kalau emailnya belum pernah daftar, supaya akunnya langsung dibuatkan.
+        </p>
       </form>
 
       <GenericTable

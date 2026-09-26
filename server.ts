@@ -581,17 +581,33 @@ app.post("/api/admin/admins", async (req, res) => {
   try {
     const admin = await requireAdmin(req, res);
     if (!admin) return;
-    const { email } = req.body || {};
+    const { email, password } = req.body || {};
     const cleanEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
     if (!cleanEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
       return res.status(400).json({ error: "Email tidak valid." });
     }
+
+    const existingUser = await pool.query(`SELECT id FROM "user" WHERE LOWER(email) = LOWER($1)`, [cleanEmail]);
+    let accountCreated = false;
+    if (!existingUser.rows[0]) {
+      if (!password || String(password).length < 6) {
+        return res.status(400).json({ error: "Akun untuk email ini belum ada — isi password (minimal 6 karakter) untuk membuat akunnya sekaligus." });
+      }
+      try {
+        await auth.api.signUpEmail({ body: { name: cleanEmail.split("@")[0], email: cleanEmail, password: String(password) } });
+        accountCreated = true;
+      } catch (signUpError: any) {
+        console.error("[admin] Failed to create account for new admin:", signUpError);
+        return res.status(503).json({ error: "Gagal membuat akun baru untuk email ini." });
+      }
+    }
+
     const result = await pool.query(
       `INSERT INTO admin_users (email, added_by) VALUES ($1, $2) RETURNING *`,
       [cleanEmail, admin.email]
     );
-    await logAdminAction(admin.email, "ADD_ADMIN", cleanEmail);
-    res.status(201).json({ admin: result.rows[0] });
+    await logAdminAction(admin.email, accountCreated ? "ADD_ADMIN_NEW_ACCOUNT" : "ADD_ADMIN", cleanEmail);
+    res.status(201).json({ admin: result.rows[0], accountCreated });
   } catch (error: any) {
     if (error?.code === "23505") {
       return res.status(409).json({ error: "Email ini sudah jadi admin." });
