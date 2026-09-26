@@ -6,6 +6,7 @@ import {
   GeneratedPRDResult,
   SavedDraftInfo,
   SavedPrdSummary,
+  BillingStatus,
   AiConfig
 } from './types';
 import {
@@ -19,6 +20,8 @@ import { Header } from './components/Header';
 import { LeftRail } from './components/LeftRail';
 import { RightRail } from './components/RightRail';
 import { HeroView } from './components/HeroView';
+import { DashboardView } from './components/DashboardView';
+import { PricingView } from './components/PricingView';
 import { StepProductType } from './components/StepProductType';
 import { StepFrontend } from './components/StepFrontend';
 import { StepDatabase } from './components/StepDatabase';
@@ -38,7 +41,11 @@ import JSZip from 'jszip';
 
 export function App() {
   // Navigation & Flow State
-  const [currentStep, setCurrentStep] = useState<WizardStep>('hero');
+  // A Pakasir redirect lands on "/?checkout=<id>" — route straight to Pricing
+  // so PricingView mounts and can poll that transaction's status.
+  const [currentStep, setCurrentStep] = useState<WizardStep>(() =>
+    new URLSearchParams(window.location.search).has('checkout') ? 'pricing' : 'hero'
+  );
   const [interviewGroup, setInterviewGroup] = useState<InterviewGroupIndex>(1);
 
   // Stack Selection State
@@ -74,6 +81,7 @@ export function App() {
   const [isSaving, setIsSaving] = useState(false);
   const [savedDraft, setSavedDraft] = useState<SavedDraftInfo | null>(null);
   const [savedPrds, setSavedPrds] = useState<SavedPrdSummary[]>([]);
+  const [billingStatus, setBillingStatus] = useState<BillingStatus | null>(null);
 
   // Load this user's previously generated PRDs so they stay reachable across
   // logins — refetched whenever the signed-in user changes.
@@ -86,6 +94,24 @@ export function App() {
       .then((res) => (res.ok ? res.json() : []))
       .then((data) => Array.isArray(data) && setSavedPrds(data))
       .catch(() => {});
+  }, [user?.uid]);
+
+  const refreshBillingStatus = () => {
+    if (!user?.uid) {
+      setBillingStatus(null);
+      return;
+    }
+    fetch('/api/billing/status')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => data && setBillingStatus(data))
+      .catch(() => {});
+  };
+
+  // Current plan + free-trial usage, so generation can be gated and the
+  // pricing page can show the right badge — refetched on login.
+  useEffect(() => {
+    refreshBillingStatus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.uid]);
 
   // Load draft from Cloud Firestore when user signs in
@@ -252,6 +278,13 @@ export function App() {
       return;
     }
 
+    if (billingStatus?.freeLimitReached) {
+      setCurrentStep('pricing');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      showToast('Jatah percobaan gratis sudah dipakai. Pilih paket untuk lanjut membuat PRD.');
+      return;
+    }
+
     setIsGenerating(true);
 
     try {
@@ -327,6 +360,7 @@ export function App() {
               ...prev
             ]);
           }
+          refreshBillingStatus();
         })
         .catch((e) => console.log('Save PRD info:', e));
     } catch (error) {
@@ -381,7 +415,7 @@ export function App() {
       showToast(`Progres tersimpan secara lokal.`);
     } finally {
       setIsSaving(false);
-      setCurrentStep('hero');
+      setCurrentStep('dashboard');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
@@ -546,10 +580,11 @@ ${risksAsMarkdown(result)}
 
   return (
     <div className="min-h-screen flex flex-col deep-atmosphere font-sans text-slate-100 selection:bg-[#F2542D] selection:text-white relative overflow-x-hidden">
-      {/* Background: cosmic wallpaper on the homepage (hidden behind the 3D
-          hero anyway), fixed mountain photo everywhere else in the wizard */}
-      {currentStep === 'hero' ? (
-        <CosmicBackground dimOpacity={0.25} />
+      {/* Background: cosmic wallpaper on the homepage, dashboard, and
+          pricing (hidden behind the 3D hero anyway), fixed mountain photo
+          everywhere else in the wizard */}
+      {currentStep === 'hero' || currentStep === 'dashboard' || currentStep === 'pricing' ? (
+        <CosmicBackground dimOpacity={currentStep === 'hero' ? 0.25 : 0.45} />
       ) : (
         <WizardBackground />
       )}
@@ -572,6 +607,7 @@ ${risksAsMarkdown(result)}
         onLogout={handleLogout}
         onSaveAndExit={handleSaveAndExit}
         onStartWizard={() => handleStartFromHero()}
+        userPlan={billingStatus?.plan}
         userEmail={currentUserEmail}
         userName={currentUserName}
         userPhoto={currentUserPhoto}
@@ -579,16 +615,11 @@ ${risksAsMarkdown(result)}
         isSaving={isSaving}
       />
 
-      {/* Hero View vs Wizard View Container */}
+      {/* Hero / Dashboard / Wizard View Container */}
       {currentStep === 'hero' ? (
         <main className="flex-1">
           <HeroView
             onStart={handleStartFromHero}
-            savedDraft={savedDraft}
-            onResumeDraft={handleResumeDraft}
-            onDiscardDraft={handleDiscardDraft}
-            savedPrds={savedPrds}
-            onOpenSavedPrd={handleOpenSavedPrd}
             userEmail={currentUserEmail}
             userName={currentUserName}
             isLoggedIn={isLoggedIn}
@@ -598,6 +629,22 @@ ${risksAsMarkdown(result)}
               setIsAuthModalOpen(true);
             }}
           />
+        </main>
+      ) : currentStep === 'dashboard' ? (
+        <main className="flex-1">
+          <DashboardView
+            userName={currentUserName}
+            savedDraft={savedDraft}
+            onResumeDraft={handleResumeDraft}
+            onDiscardDraft={handleDiscardDraft}
+            savedPrds={savedPrds}
+            onOpenSavedPrd={handleOpenSavedPrd}
+            onStartNew={() => handleStartFromHero()}
+          />
+        </main>
+      ) : currentStep === 'pricing' ? (
+        <main className="flex-1">
+          <PricingView billingStatus={billingStatus} onPaymentConfirmed={refreshBillingStatus} />
         </main>
       ) : (
         <main className="flex-1 max-w-[1540px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 relative z-10">
@@ -724,7 +771,7 @@ ${risksAsMarkdown(result)}
 
       {/* Footer Branding */}
       <footer className="w-full border-t border-white/[0.05] py-5 px-6 text-center text-xs text-slate-400 font-mono relative z-10">
-        <p>© {new Date().getFullYear()} RotaLogic • PRD Generator — Dari ide 1 kalimat jadi PRD matang.</p>
+        <p>© {new Date().getFullYear()} RotaLogic. PRD Generator: dari ide 1 kalimat jadi PRD matang.</p>
       </footer>
 
       {/* Toast Notification */}

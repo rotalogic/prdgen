@@ -1,6 +1,13 @@
 import React, { useState } from 'react';
-import { WizardStep, InterviewGroupIndex } from '../types';
-import { Settings, Save, Check, ExternalLink, Key, LogIn, LogOut, User as UserIcon } from 'lucide-react';
+import { WizardStep, InterviewGroupIndex, PlanId } from '../types';
+import { Settings, Save, Check, ExternalLink, Key, LogIn, LogOut, User as UserIcon, LayoutGrid, Rocket } from 'lucide-react';
+
+const PLAN_LABEL: Record<PlanId, string> = {
+  free: 'Free',
+  starter: 'Starter',
+  pro: 'Pro',
+  pro_tahunan: 'Pro Tahunan',
+};
 
 interface HeaderProps {
   currentStep: WizardStep;
@@ -17,6 +24,7 @@ interface HeaderProps {
   userPhoto?: string;
   isLoggedIn?: boolean;
   isSaving?: boolean;
+  userPlan?: PlanId;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -33,9 +41,12 @@ export const Header: React.FC<HeaderProps> = ({
   userName,
   userPhoto,
   isLoggedIn = false,
-  isSaving = false
+  isSaving = false,
+  userPlan = 'free'
 }) => {
   const isHero = currentStep === 'hero';
+  const isDashboard = currentStep === 'dashboard';
+  const isPricing = currentStep === 'pricing';
   const isSetupSteps = ['product_type', 'frontend', 'database', 'summary'].includes(currentStep);
   const isInterview = currentStep === 'interview';
   const isResult = currentStep === 'result';
@@ -50,13 +61,13 @@ export const Header: React.FC<HeaderProps> = ({
       >
         <img
           src="/assets/brand/rotalogic-logo.png"
-          alt="RotaLogic — PRD Generator"
+          alt="RotaLogic PRD Generator"
           className="h-8 sm:h-9 w-auto transition-transform duration-300 group-hover:scale-105"
         />
       </div>
 
-      {/* Stepper Progression Navigation (when not in Hero) */}
-      {!isHero && (
+      {/* Stepper Progression Navigation (wizard steps only) */}
+      {!isHero && !isDashboard && !isPricing && (
         <nav aria-label="Progress Stepper" className="hidden md:flex items-center gap-2 lg:gap-3 text-xs">
           {/* If in Setup Phase (Steps 1 to 4) */}
           {isSetupSteps && (
@@ -212,9 +223,32 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* Right Header Navigation & Actions */}
       <div className="flex items-center gap-4 sm:gap-6">
-        {/* Kunci AI & Pengaturan — hanya untuk pengguna yang sudah masuk */}
+        {/* Dashboard, Kunci AI & Pengaturan - hanya untuk pengguna yang sudah masuk */}
         {isLoggedIn && (
           <>
+            {!isDashboard && (
+              <button
+                onClick={() => onNavigateStep('dashboard')}
+                className="hidden sm:inline-flex items-center gap-1.5 text-xs font-medium text-slate-400 hover:text-white transition-colors"
+                type="button"
+              >
+                <LayoutGrid className="w-3.5 h-3.5" />
+                <span>Dashboard</span>
+              </button>
+            )}
+
+            <button
+              onClick={() => onNavigateStep('pricing')}
+              className={`hidden sm:inline-flex items-center gap-1.5 text-xs font-medium transition-colors ${
+                userPlan === 'free' ? 'text-amber-400 hover:text-amber-300' : 'text-slate-400 hover:text-white'
+              }`}
+              type="button"
+              title={`Paket saat ini: ${PLAN_LABEL[userPlan]}`}
+            >
+              <Rocket className="w-3.5 h-3.5" />
+              <span>{userPlan === 'free' ? 'Upgrade' : PLAN_LABEL[userPlan]}</span>
+            </button>
+
             {onOpenApiKeyDialog && (
               <button
                 onClick={onOpenApiKeyDialog}
@@ -316,8 +350,8 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         )}
 
-        {/* CTA: Either "Mulai Sekarang" on Hero, or "Simpan & Keluar" on Wizard */}
-        {isHero ? (
+        {/* CTA: "Mulai Sekarang" on Hero/Dashboard/Pricing, "Simpan & Kembali" during the wizard */}
+        {isHero || isDashboard || isPricing ? (
           <button
             onClick={onStartWizard}
             className="inline-flex items-center gap-2 bg-[#F2542D] hover:bg-[#ff6742] text-white font-medium text-xs sm:text-sm px-4 sm:px-5 py-2 sm:py-2.5 rounded-lg shadow-[0_0_20px_rgba(242,84,45,0.4)] hover:shadow-[0_0_30px_rgba(242,84,45,0.6)] transition-all duration-200 cursor-pointer"
@@ -332,10 +366,10 @@ export const Header: React.FC<HeaderProps> = ({
             disabled={isSaving}
             className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg border border-[#F2542D]/50 bg-[#F2542D]/15 hover:bg-[#F2542D]/25 text-xs font-semibold text-[#ff8e73] hover:text-white transition-all shadow-sm cursor-pointer disabled:opacity-50"
             type="button"
-            title={`Simpan progres ke akun ${userEmail} dan kembali ke homepage`}
+            title={`Simpan progres ke akun ${userEmail} dan kembali ke dashboard`}
           >
             <Save className={`w-3.5 h-3.5 text-[#F2542D] ${isSaving ? 'animate-bounce' : ''}`} />
-            <span>{isSaving ? 'Menyimpan...' : 'Simpan & Keluar'}</span>
+            <span>{isSaving ? 'Menyimpan...' : 'Simpan & Kembali'}</span>
           </button>
         )}
       </div>

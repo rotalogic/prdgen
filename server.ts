@@ -8,6 +8,7 @@ import "dotenv/config";
 // Google OAuth token exchange & panggilan Gemini/Claude/OpenAI gagal tanpa ini.
 import { request as httpsRequest } from "node:https";
 import { request as httpRequest } from "node:http";
+import crypto from "node:crypto";
 
 function fetchViaNode(url: any, init: any = {}) {
   return new Promise((resolve, reject) => {
@@ -81,7 +82,11 @@ app.all("/api/auth/*", async (req, res) => {
   }
 });
 
-app.use(express.json());
+// Default 100kb is too small for a saved PRD payload — a fully generated
+// document (54-chapter markdown + SQL + ERD + task list) for a product
+// with many entities easily exceeds it, so /api/prds would silently fail
+// to save with a 413 for anyone whose product has a non-trivial data model.
+app.use(express.json({ limit: '5mb' }));
 
 // Tells the client whether Google sign-in has real credentials configured,
 // so the UI can disable the button instead of letting it fail at click time.
@@ -148,6 +153,246 @@ app.post("/api/reviews", async (req, res) => {
   }
 });
 
+// Free plan gets exactly one lifetime PRD before the paywall kicks in; any
+// row in user_plans (however it got there) is treated as unlimited, since
+// there's no billing-cycle tracking yet to enforce Starter's monthly cap.
+const FREE_PLAN_LIFETIME_LIMIT = 1;
+
+async function getBillingStatus(userId: string) {
+  const [planResult, countResult] = await Promise.all([
+    pool.query(`SELECT plan FROM user_plans WHERE user_id = $1`, [userId]),
+    pool.query(`SELECT COUNT(*)::int AS count FROM prd_documents WHERE user_id = $1`, [userId]),
+  ]);
+  const plan = planResult.rows[0]?.plan || 'free';
+  const prdCount = countResult.rows[0].count;
+  const freeLimitReached = plan === 'free' && prdCount >= FREE_PLAN_LIFETIME_LIMIT;
+  return { plan, prdCount, freeLimit: FREE_PLAN_LIFETIME_LIMIT, freeLimitReached };
+}
+
+// Current plan + usage, so the client can gate "Buat Dokumen PRD" and show
+// the right badge/limit messaging without guessing.
+app.get("/api/billing/status", async (req, res) => {
+  try {
+    const session = await auth.api.getSession({ headers: fromNodeHeaders(req.headers) });
+    if (!session) {
+      return res.status(401).json({ error: "Harus masuk untuk melihat status paket." });
+    }
+    res.json(await getBillingStatus(session.user.id));
+  } catch (error) {
+    console.error("[billing] Failed to load status:", error);
+    res.status(503).json({ error: "Gagal memuat status paket." });
+  }
+});
+
+// Real purchase-intent signal from the pricing page — there's no live
+// checkout yet, so a plan button records this instead of pretending to charge.
+app.post("/api/upgrade-interest", async (req, res) => {
+  try {
+    const session = await auth.api.getSession({ headers: fromNodeHeaders(req.headers) });
+    if (!session) {
+      return res.status(401).json({ error: "Harus masuk untuk memilih paket." });
+    }
+    const { plan, billingCycle, promoCode } = req.body || {};
+    const allowedPlans = ['starter', 'pro', 'pro_tahunan'];
+    if (!allowedPlans.includes(plan)) {
+      return res.status(400).json({ error: "Paket tidak dikenali." });
+    }
+    const cleanPromoCode = typeof promoCode === 'string' && promoCode.trim()
+      ? promoCode.trim().slice(0, 40)
+      : null;
+    await pool.query(
+      `INSERT INTO upgrade_interest (user_id, plan, billing_cycle, promo_code) VALUES ($1, $2, $3, $4)`,
+      [session.user.id, plan, String(billingCycle || '1_bulan').slice(0, 20), cleanPromoCode]
+    );
+    res.status(201).json({ success: true });
+  } catch (error) {
+    console.error("[upgrade-interest] Failed to record interest:", error);
+    res.status(503).json({ error: "Gagal mencatat minat upgrade." });
+  }
+});
+
+// Server-side source of truth for what each plan actually costs — the
+// client sends only the plan id, never the amount, so a tampered request
+// can't buy Pro for the price of Starter.
+const PLAN_PRICES_MONTHLY: Record<string, number> = {
+  starter: 50000,
+  pro_tahunan: 99000,
+  pro: 149000,
+};
+const PLAN_LABELS: Record<string, string> = {
+  starter: "Starter",
+  pro_tahunan: "Pro Tahunan",
+  pro: "Pro",
+};
+
+// Creates a Pakasir payment link scoped to this one checkout attempt and
+// records it as 'pending' — the webhook below is what actually flips it to
+// 'paid' and upgrades the user's plan.
+app.post("/api/checkout/pakasir", async (req, res) => {
+  try {
+    const session = await auth.api.getSession({ headers: fromNodeHeaders(req.headers) });
+    if (!session) {
+      return res.status(401).json({ error: "Harus masuk untuk checkout." });
+    }
+    if (!process.env.PAKASIR_API_KEY || !process.env.PAKASIR_SLUG) {
+      return res.status(503).json({ error: "Pembayaran belum dikonfigurasi. Coba lagi nanti." });
+    }
+    const { plan, billingCycle, promoCode } = req.body || {};
+    if (!Object.prototype.hasOwnProperty.call(PLAN_PRICES_MONTHLY, plan)) {
+      return res.status(400).json({ error: "Paket tidak dikenali." });
+    }
+    const cycle = billingCycle === "3_bulan" ? "3_bulan" : "1_bulan";
+    const amount = PLAN_PRICES_MONTHLY[plan] * (cycle === "3_bulan" ? 3 : 1);
+    const cleanPromoCode = typeof promoCode === "string" && promoCode.trim()
+      ? promoCode.trim().slice(0, 40)
+      : null;
+
+    const pakasirBase = process.env.PAKASIR_API_BASE || "https://app.pakasir.com/api/v2";
+    const slug = process.env.PAKASIR_SLUG;
+    const appUrl = process.env.APP_URL || `http://localhost:${PORT}`;
+
+    const insertResult = await pool.query(
+      `INSERT INTO payment_transactions (user_id, plan, billing_cycle, amount, promo_code, status)
+       VALUES ($1, $2, $3, $4, $5, 'pending') RETURNING id`,
+      [session.user.id, plan, cycle, amount, cleanPromoCode]
+    );
+    const txnId = insertResult.rows[0].id;
+    const orderId = `txn-${txnId}`;
+
+    const pakasirRes = await fetch(`${pakasirBase}/create-transaction/${slug}/${orderId}`, {
+      method: "POST",
+      headers: {
+        "X-Api-Key": process.env.PAKASIR_API_KEY,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ method: "payment_link", amount }),
+    });
+    if (!pakasirRes.ok) {
+      const errBody = await pakasirRes.json().catch(() => ({}));
+      console.error("[checkout] Pakasir create-transaction failed:", pakasirRes.status, errBody);
+      return res.status(503).json({ error: "Gagal membuat link pembayaran. Coba lagi." });
+    }
+    const pakasirData = await pakasirRes.json();
+    const paymentLink = pakasirData?.payment_link;
+    const pakasirTxnId = pakasirData?.txn_id;
+    if (!paymentLink || !pakasirTxnId) {
+      console.error("[checkout] Unexpected Pakasir response shape:", pakasirData);
+      return res.status(503).json({ error: "Gagal membuat link pembayaran. Coba lagi." });
+    }
+
+    await pool.query(
+      `UPDATE payment_transactions SET pakasir_order_id = $1, pakasir_txn_id = $2 WHERE id = $3`,
+      [orderId, pakasirTxnId, txnId]
+    );
+    const returnUrl = `${appUrl}/?checkout=${txnId}`;
+    const link = `${paymentLink}?redirect=${encodeURIComponent(returnUrl)}`;
+    res.status(201).json({ link, txnId });
+  } catch (error) {
+    console.error("[checkout] Failed to create Pakasir checkout:", error);
+    res.status(503).json({ error: "Gagal memulai pembayaran." });
+  }
+});
+
+// Pakasir doesn't sign webhooks cryptographically — it sends a shared secret
+// (from the project dashboard, not one we invent) in the X-Secret header.
+// Not session-gated like every other route in this file.
+app.post("/api/webhooks/pakasir", async (req, res) => {
+  try {
+    const expectedSecret = process.env.PAKASIR_WEBHOOK_SECRET || "";
+    const providedSecret = String(req.header("X-Secret") || "");
+    const expectedBuf = Buffer.from(expectedSecret);
+    const providedBuf = Buffer.from(providedSecret);
+    const secretValid =
+      expectedSecret.length > 0 &&
+      expectedBuf.length === providedBuf.length &&
+      crypto.timingSafeEqual(expectedBuf, providedBuf);
+    if (!secretValid) {
+      console.warn("[pakasir-webhook] Rejected request with invalid X-Secret");
+      return res.status(401).json({ error: "Invalid secret" });
+    }
+
+    console.log("[pakasir-webhook] Payload:", JSON.stringify(req.body));
+    const { order_id, amount, status } = req.body || {};
+    if (!order_id) {
+      return res.status(200).json({ received: true, note: "no order_id in payload" });
+    }
+
+    const txnResult = await pool.query(
+      `SELECT id, user_id, plan, amount, status, pakasir_txn_id FROM payment_transactions WHERE pakasir_order_id = $1`,
+      [order_id]
+    );
+    const txn = txnResult.rows[0];
+    if (!txn) {
+      console.warn("[pakasir-webhook] No matching transaction for order_id:", order_id);
+      return res.status(200).json({ received: true, note: "no matching transaction" });
+    }
+    if (txn.status === "paid") {
+      return res.status(200).json({ received: true, note: "already processed" });
+    }
+    // Pakasir's own docs recommend treating the webhook as an untrusted
+    // notification and cross-checking amount + confirming via their
+    // authenticated status endpoint before trusting it.
+    if (Number(amount) !== txn.amount) {
+      console.warn("[pakasir-webhook] Amount mismatch for order_id:", order_id, amount, txn.amount);
+      return res.status(200).json({ received: true, note: "amount mismatch" });
+    }
+    if (String(status || "").toLowerCase() !== "completed") {
+      return res.status(200).json({ received: true, note: `status '${status}' not treated as paid` });
+    }
+
+    const pakasirBase = process.env.PAKASIR_API_BASE || "https://app.pakasir.com/api/v2";
+    const slug = process.env.PAKASIR_SLUG;
+    const confirmRes = await fetch(`${pakasirBase}/transaction-status/${slug}/${txn.pakasir_txn_id}`, {
+      headers: { "X-Api-Key": process.env.PAKASIR_API_KEY || "" },
+    }).catch(() => null);
+    const confirmData = confirmRes && confirmRes.ok ? await confirmRes.json().catch(() => null) : null;
+    if (!confirmData || confirmData.status !== "completed") {
+      console.warn("[pakasir-webhook] Status endpoint did not confirm payment for order_id:", order_id, confirmData);
+      return res.status(200).json({ received: true, note: "not confirmed by status endpoint" });
+    }
+
+    await pool.query(
+      `UPDATE payment_transactions SET status = 'paid', paid_at = now() WHERE id = $1`,
+      [txn.id]
+    );
+    await pool.query(
+      `INSERT INTO user_plans (user_id, plan, updated_at) VALUES ($1, $2, now())
+       ON CONFLICT (user_id) DO UPDATE SET plan = excluded.plan, updated_at = now()`,
+      [txn.user_id, txn.plan]
+    );
+    res.status(200).json({ received: true });
+  } catch (error) {
+    console.error("[pakasir-webhook] Failed to process webhook:", error);
+    res.status(500).json({ error: "Failed to process webhook" });
+  }
+});
+
+// Frontend polls this right after the Pakasir redirect back, since the
+// webhook above can land a few seconds after the browser returns.
+app.get("/api/checkout/pakasir/status/:id", async (req, res) => {
+  try {
+    const session = await auth.api.getSession({ headers: fromNodeHeaders(req.headers) });
+    if (!session) {
+      return res.status(401).json({ error: "Harus masuk." });
+    }
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id)) {
+      return res.status(400).json({ error: "ID tidak valid." });
+    }
+    const result = await pool.query(
+      `SELECT status FROM payment_transactions WHERE id = $1 AND user_id = $2`,
+      [id, session.user.id]
+    );
+    if (!result.rows[0]) {
+      return res.status(404).json({ error: "Transaksi tidak ditemukan." });
+    }
+    res.json({ status: result.rows[0].status });
+  } catch (error) {
+    console.error("[checkout] Failed to load transaction status:", error);
+    res.status(503).json({ error: "Gagal memuat status transaksi." });
+  }
+});
+
 // Saves a fully generated PRD (all artifacts) to the current user's account
 // so it stays reachable after they log back in later.
 app.post("/api/prds", async (req, res) => {
@@ -160,6 +405,15 @@ app.post("/api/prds", async (req, res) => {
     if (!title || typeof title !== 'string' || !payload || typeof payload !== 'object') {
       return res.status(400).json({ error: "Data PRD tidak lengkap." });
     }
+
+    const billing = await getBillingStatus(session.user.id);
+    if (billing.freeLimitReached) {
+      return res.status(403).json({
+        error: "Jatah percobaan gratis sudah habis. Upgrade paket untuk membuat PRD lagi.",
+        code: "FREE_LIMIT_REACHED",
+      });
+    }
+
     const result = await pool.query(
       `INSERT INTO prd_documents (user_id, title, product_type, payload) VALUES ($1, $2, $3, $4) RETURNING id, created_at`,
       [session.user.id, title.slice(0, 200), String(productType || '').slice(0, 100), JSON.stringify(payload)]

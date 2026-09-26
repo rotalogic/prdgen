@@ -43,5 +43,49 @@ export async function ensureAppTables() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
     CREATE INDEX IF NOT EXISTS idx_prd_documents_user_id ON prd_documents(user_id);
+
+    -- One row per user once they're on a paid plan; absence of a row means
+    -- 'free'. Written by the Pakasir webhook once a payment_transactions row
+    -- is marked paid (or manually, for support-granted upgrades).
+    CREATE TABLE IF NOT EXISTS user_plans (
+      user_id TEXT PRIMARY KEY REFERENCES "user"(id) ON DELETE CASCADE,
+      plan TEXT NOT NULL DEFAULT 'free',
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    -- Legacy purchase-intent log from before Pakasir checkout existed. No
+    -- longer written to, kept only for historical rows.
+    CREATE TABLE IF NOT EXISTS upgrade_interest (
+      id SERIAL PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+      plan TEXT NOT NULL,
+      billing_cycle TEXT NOT NULL,
+      promo_code TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    ALTER TABLE upgrade_interest ADD COLUMN IF NOT EXISTS promo_code TEXT;
+
+    -- One row per Pakasir checkout attempt. Created 'pending' when a payment
+    -- link is generated, flipped to 'paid' by the webhook once Pakasir
+    -- confirms payment — that's what actually upgrades user_plans.
+    CREATE TABLE IF NOT EXISTS payment_transactions (
+      id SERIAL PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+      plan TEXT NOT NULL,
+      billing_cycle TEXT NOT NULL,
+      amount INTEGER NOT NULL,
+      promo_code TEXT,
+      pakasir_order_id TEXT,
+      pakasir_txn_id TEXT,
+      status TEXT NOT NULL DEFAULT 'pending',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      paid_at TIMESTAMPTZ
+    );
+    ALTER TABLE payment_transactions DROP COLUMN IF EXISTS mayar_link_id;
+    ALTER TABLE payment_transactions ADD COLUMN IF NOT EXISTS pakasir_order_id TEXT;
+    ALTER TABLE payment_transactions ADD COLUMN IF NOT EXISTS pakasir_txn_id TEXT;
+    CREATE INDEX IF NOT EXISTS idx_payment_transactions_user_id ON payment_transactions(user_id);
+    CREATE INDEX IF NOT EXISTS idx_payment_transactions_pakasir_order_id ON payment_transactions(pakasir_order_id);
+    DROP INDEX IF EXISTS idx_payment_transactions_mayar_link_id;
   `);
 }

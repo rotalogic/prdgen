@@ -20,14 +20,25 @@ export interface SavedDraftInfo {
   projectName: string;
 }
 
-export type WizardStep = 
+export type WizardStep =
   | 'hero'
+  | 'dashboard'
+  | 'pricing'
   | 'product_type'
   | 'frontend'
   | 'database'
   | 'summary'
   | 'interview'
   | 'result';
+
+export type PlanId = 'free' | 'starter' | 'pro' | 'pro_tahunan';
+
+export interface BillingStatus {
+  plan: PlanId;
+  prdCount: number;
+  freeLimit: number;
+  freeLimitReached: boolean;
+}
 
 export type InterviewGroupIndex = 1 | 2 | 3 | 4 | 5 | 6;
 
