@@ -136,5 +136,28 @@ export async function ensureAppTables() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
+
+    -- Who can access the admin panel. Replaces the old ADMIN_EMAILS env var
+    -- (which needed a server restart to change) — this table is the single
+    -- source of truth now, editable from the Admin & Akses module itself.
+    CREATE TABLE IF NOT EXISTS admin_users (
+      id SERIAL PRIMARY KEY,
+      email TEXT NOT NULL UNIQUE,
+      added_by TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
   `);
+
+  // One-time migration path: seed admin_users from ADMIN_EMAILS so nobody
+  // who already had access loses it when this table was introduced.
+  const seedEmails = (process.env.ADMIN_EMAILS || "")
+    .split(",")
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean);
+  for (const email of seedEmails) {
+    await pool.query(
+      `INSERT INTO admin_users (email, added_by) VALUES ($1, 'ADMIN_EMAILS seed') ON CONFLICT (email) DO NOTHING`,
+      [email]
+    );
+  }
 }

@@ -225,14 +225,13 @@ const PLAN_LABELS: Record<string, string> = {
   pro: "Pro",
 };
 
-// Solo/small-team ownership check — no role table, just a short allowlist of
-// emails that get access to /api/admin/*.
-const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || "")
-  .split(",")
-  .map((s) => s.trim().toLowerCase())
-  .filter(Boolean);
-function isAdminEmail(email: string | undefined | null) {
-  return !!email && ADMIN_EMAILS.includes(email.toLowerCase());
+// Who gets access to /api/admin/* — backed by the admin_users table (see
+// src/lib/db.ts), not an env var, so it's editable from the Admin & Akses
+// module without a server restart.
+async function isAdminEmail(email: string | undefined | null): Promise<boolean> {
+  if (!email) return false;
+  const result = await pool.query(`SELECT 1 FROM admin_users WHERE LOWER(email) = LOWER($1)`, [email]);
+  return result.rows.length > 0;
 }
 
 // Looks up a promo code and returns the discounted amount, or an error
@@ -444,11 +443,11 @@ app.get("/api/checkout/pakasir/status/:id", async (req, res) => {
 });
 
 // Lets the client know whether to show the Admin nav link, without ever
-// exposing the ADMIN_EMAILS allowlist itself.
+// exposing the admin_users list itself.
 app.get("/api/admin/check", async (req, res) => {
   try {
     const session = await auth.api.getSession({ headers: fromNodeHeaders(req.headers) });
-    res.json({ isAdmin: !!session && isAdminEmail(session.user.email) });
+    res.json({ isAdmin: !!session && (await isAdminEmail(session.user.email)) });
   } catch (error) {
     console.error("[admin] Failed check:", error);
     res.json({ isAdmin: false });
@@ -457,7 +456,7 @@ app.get("/api/admin/check", async (req, res) => {
 
 async function requireAdmin(req: any, res: any): Promise<{ userId: string; email: string } | null> {
   const session = await auth.api.getSession({ headers: fromNodeHeaders(req.headers) });
-  if (!session || !isAdminEmail(session.user.email)) {
+  if (!session || !(await isAdminEmail(session.user.email))) {
     res.status(403).json({ error: "Akses ditolak." });
     return null;
   }
@@ -567,16 +566,66 @@ app.get("/api/admin/users", async (req, res) => {
   }
 });
 
-// Read-only view of who currently has admin access. There's no runtime
-// "invite" here on purpose — ADMIN_EMAILS is a server env var, so granting
-// access is genuinely an env-edit + restart, not a database write.
 app.get("/api/admin/admins", async (req, res) => {
   try {
     if (!(await requireAdmin(req, res))) return;
-    res.json({ emails: ADMIN_EMAILS });
+    const result = await pool.query(`SELECT * FROM admin_users ORDER BY created_at ASC`);
+    res.json({ admins: result.rows });
   } catch (error) {
     console.error("[admin] Failed to list admins:", error);
     res.status(503).json({ error: "Gagal memuat daftar admin." });
+  }
+});
+
+app.post("/api/admin/admins", async (req, res) => {
+  try {
+    const admin = await requireAdmin(req, res);
+    if (!admin) return;
+    const { email } = req.body || {};
+    const cleanEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
+    if (!cleanEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      return res.status(400).json({ error: "Email tidak valid." });
+    }
+    const result = await pool.query(
+      `INSERT INTO admin_users (email, added_by) VALUES ($1, $2) RETURNING *`,
+      [cleanEmail, admin.email]
+    );
+    await logAdminAction(admin.email, "ADD_ADMIN", cleanEmail);
+    res.status(201).json({ admin: result.rows[0] });
+  } catch (error: any) {
+    if (error?.code === "23505") {
+      return res.status(409).json({ error: "Email ini sudah jadi admin." });
+    }
+    console.error("[admin] Failed to add admin:", error);
+    res.status(503).json({ error: "Gagal menambahkan admin." });
+  }
+});
+
+app.delete("/api/admin/admins/:id", async (req, res) => {
+  try {
+    const admin = await requireAdmin(req, res);
+    if (!admin) return;
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id)) {
+      return res.status(400).json({ error: "ID tidak valid." });
+    }
+    const target = await pool.query(`SELECT email FROM admin_users WHERE id = $1`, [id]);
+    if (!target.rows[0]) {
+      return res.status(404).json({ error: "Admin tidak ditemukan." });
+    }
+    if (target.rows[0].email.toLowerCase() === admin.email.toLowerCase()) {
+      return res.status(400).json({ error: "Tidak bisa menghapus akun sendiri. Minta admin lain untuk menghapusnya." });
+    }
+    const countResult = await pool.query(`SELECT COUNT(*)::int AS count FROM admin_users`);
+    if (countResult.rows[0].count <= 1) {
+      return res.status(400).json({ error: "Tidak bisa menghapus admin terakhir." });
+    }
+    await pool.query(`DELETE FROM admin_users WHERE id = $1`, [id]);
+    await logAdminAction(admin.email, "REMOVE_ADMIN", target.rows[0].email);
+    res.status(204).end();
+  } catch (error) {
+    console.error("[admin] Failed to remove admin:", error);
+    res.status(503).json({ error: "Gagal menghapus admin." });
   }
 });
 

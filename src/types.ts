@@ -129,6 +129,13 @@ export interface ContentItem {
   updated_at: string;
 }
 
+export interface AdminAccount {
+  id: number;
+  email: string;
+  added_by: string | null;
+  created_at: string;
+}
+
 export type InterviewGroupIndex = 1 | 2 | 3 | 4 | 5 | 6;
 
 export type ResultTab = 

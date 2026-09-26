@@ -9,7 +9,7 @@ import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianG
 import { cn } from '../lib/cn';
 import {
   AdminStats, AdminUser, PromoCode, PlanId, AnalyticsData, AuditLogEntry,
-  AppSettings, IntegrationStatus, ReconcileResult, ContentItem,
+  AppSettings, IntegrationStatus, ReconcileResult, ContentItem, AdminAccount,
 } from '../types';
 
 const PLAN_LABEL: Record<string, string> = {
@@ -419,7 +419,48 @@ function PromoModule({
   );
 }
 
-function RbacModule({ admins }: { admins: string[] }) {
+function RbacModule({
+  admins, setAdmins,
+}: {
+  admins: AdminAccount[];
+  setAdmins: React.Dispatch<React.SetStateAction<AdminAccount[]>>;
+}) {
+  const [email, setEmail] = useState('');
+  const [adding, setAdding] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const handleAdd = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAdding(true);
+    setErrorMsg(null);
+    try {
+      const res = await fetch('/api/admin/admins', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || 'Gagal menambahkan admin.');
+      setAdmins((prev) => [...prev, body.admin]);
+      setEmail('');
+    } catch (e: any) {
+      setErrorMsg(e.message || 'Gagal menambahkan admin.');
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  const removeAdmin = async (a: AdminAccount) => {
+    setErrorMsg(null);
+    const res = await fetch(`/api/admin/admins/${a.id}`, { method: 'DELETE' });
+    if (res.ok || res.status === 204) {
+      setAdmins((prev) => prev.filter((x) => x.id !== a.id));
+    } else {
+      const body = await res.json().catch(() => ({}));
+      setErrorMsg(body.error || 'Gagal menghapus admin.');
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="mb-8">
@@ -427,15 +468,34 @@ function RbacModule({ admins }: { admins: string[] }) {
         <p className="text-secondary mt-1">Email yang punya akses ke panel ini.</p>
       </div>
 
-      <div className="bg-card border border-border rounded-xl p-5 text-sm text-secondary">
-        Menambah admin baru dilakukan lewat env var <code className="text-accent">ADMIN_EMAILS</code> di server, bukan dari sini — ini murni daftar baca. Tambahkan email lalu restart server untuk memberi akses.
-      </div>
+      <form onSubmit={handleAdd} className="bg-card border border-border rounded-xl p-6 flex flex-col sm:flex-row gap-4">
+        {errorMsg && <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-xs sm:w-full">{errorMsg}</div>}
+        <input
+          type="email"
+          required
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="email@domain.com"
+          className="flex-1 bg-background border border-border rounded-lg px-4 py-2 text-primary font-mono text-sm"
+        />
+        <button type="submit" disabled={adding} className="bg-accent text-white font-bold px-6 py-2 rounded-lg text-sm flex items-center justify-center gap-2 disabled:opacity-60">
+          {adding ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+          Tambah Admin
+        </button>
+      </form>
 
       <GenericTable
-        columns={['Email']}
-        data={admins.map((email) => ({ email }))}
-        renderRow={(a: { email: string }) => (
-          <td className="px-5 py-3 text-primary flex items-center gap-2"><Shield className="w-3.5 h-3.5 text-accent" />{a.email}</td>
+        columns={['Email', 'Ditambahkan Oleh', 'Sejak']}
+        data={admins}
+        renderRow={(a: AdminAccount) => (
+          <>
+            <td className="px-5 py-3 text-primary flex items-center gap-2"><Shield className="w-3.5 h-3.5 text-accent" />{a.email}</td>
+            <td className="px-5 py-3 text-secondary">{a.added_by || '-'}</td>
+            <td className="px-5 py-3 text-secondary font-mono">{formatDate(a.created_at)}</td>
+          </>
+        )}
+        actions={(a: AdminAccount) => (
+          <button onClick={() => removeAdmin(a)} title="Hapus" className="text-secondary hover:text-red-500 p-1"><Trash2 className="w-4 h-4" /></button>
         )}
       />
     </div>
@@ -840,7 +900,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ onLogout }) => {
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [promoCodes, setPromoCodes] = useState<PromoCode[]>([]);
-  const [admins, setAdmins] = useState<string[]>([]);
+  const [admins, setAdmins] = useState<AdminAccount[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -864,7 +924,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ onLogout }) => {
         setStats(statsData);
         setUsers(usersData.users);
         setPromoCodes(promoData.promoCodes);
-        setAdmins(adminsData.emails);
+        setAdmins(adminsData.admins);
         setErrorMsg(null);
       })
       .catch(() => setErrorMsg('Gagal memuat data admin.'))
@@ -1002,7 +1062,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ onLogout }) => {
             ) : activeModule === 'promo' ? (
               <PromoModule promoCodes={promoCodes} setPromoCodes={setPromoCodes} searchQuery={searchQuery} />
             ) : activeModule === 'rbac' ? (
-              <RbacModule admins={admins} />
+              <RbacModule admins={admins} setAdmins={setAdmins} />
             ) : activeModule === 'finance' && stats ? (
               <FinanceModule stats={stats} />
             ) : activeModule === 'reports' ? (
