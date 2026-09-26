@@ -12,9 +12,10 @@ import {
   Code, 
   GraduationCap, 
   Palette, 
-  Network, 
-  Sparkles, 
-  ArrowLeft, 
+  Network,
+  MoreHorizontal,
+  Info,
+  ArrowLeft,
   ArrowRight, 
   Plus, 
   Trash2, 
@@ -140,7 +141,7 @@ export const InterviewView: React.FC<InterviewViewProps> = ({
     { id: 'Mahasiswa / Pelajar', label: 'Mahasiswa / Pelajar', icon: GraduationCap },
     { id: 'Kreator / Freelancer', label: 'Kreator / Freelancer', icon: Palette },
     { id: 'Komunitas / Organisasi', label: 'Komunitas / Organisasi', icon: Network },
-    { id: 'Lainnya', label: 'Lainnya', icon: Sparkles }
+    { id: 'Lainnya', label: 'Lainnya', icon: MoreHorizontal }
   ];
 
   return (
@@ -1421,7 +1422,7 @@ ${data.q8_entities.map(e => `CREATE TABLE ${e.name} (\n${e.fields.map(f => `    
             {/* Bottom notification card */}
             <div className="p-3.5 rounded-xl bg-[#0E1528] border border-slate-800 text-slate-400 text-xs flex items-center gap-3">
               <div className="w-6 h-6 rounded-lg bg-[#F2542D]/20 text-[#F2542D] flex items-center justify-center shrink-0">
-                <Sparkles className="w-3.5 h-3.5" />
+                <Info className="w-3.5 h-3.5" />
               </div>
               <p>
                 Semua jawaban akan digabungkan untuk menghasilkan PRD lengkap mengikuti struktur Master PRD RotaLogic, ERD, skema SQL, arsitektur sistem, dan task list sprint.

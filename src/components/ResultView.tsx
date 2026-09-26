@@ -91,9 +91,9 @@ export const ResultView: React.FC<ResultViewProps> = ({
         
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative z-10">
           <div>
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[11px] font-mono font-semibold mb-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span>SIAP IMPLEMENTASI</span>
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-500/10 border-l-2 border-emerald-500 text-emerald-400 text-[11px] font-mono font-semibold mb-2">
+              <CheckCheck className="w-3 h-3" />
+              <span>Siap implementasi</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-display font-bold text-white tracking-tight">
               PRD Kamu Sudah Siap!
@@ -147,7 +147,7 @@ export const ResultView: React.FC<ResultViewProps> = ({
                       <FileArchive className="w-4 h-4 text-[#F2542D] mt-0.5 shrink-0" />
                       <span>
                         <span className="block text-xs font-semibold text-white">Arsip ZIP (.zip)</span>
-                        <span className="block text-[11px] text-slate-400">PRD, ERD, arsitektur, SQL, task list &amp; risiko — file terpisah</span>
+                        <span className="block text-[11px] text-slate-400">PRD, ERD, arsitektur, SQL, task list, dan risiko: file terpisah</span>
                       </span>
                     </button>
                   </div>

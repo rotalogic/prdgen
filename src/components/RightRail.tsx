@@ -221,7 +221,7 @@ export const RightRail: React.FC<RightRailProps> = ({
           <p className="text-slate-400 text-xs leading-relaxed italic">
             "{currentTip.quote}"
           </p>
-          <div className="text-[10px] font-mono text-slate-500 text-right">— RotaLogic</div>
+          <div className="text-[10px] font-mono text-slate-500 text-right">- RotaLogic</div>
         </div>
       </aside>
     );
@@ -362,7 +362,7 @@ export const RightRail: React.FC<RightRailProps> = ({
                   <FileArchive className="w-4 h-4 text-[#F2542D] mt-0.5 shrink-0" />
                   <span>
                     <span className="block text-xs font-semibold text-white">Arsip ZIP (.zip)</span>
-                    <span className="block text-[11px] text-slate-400">PRD, ERD, arsitektur, SQL, task list &amp; risiko — file terpisah</span>
+                    <span className="block text-[11px] text-slate-400">PRD, ERD, arsitektur, SQL, task list, dan risiko: file terpisah</span>
                   </span>
                 </button>
               </div>
