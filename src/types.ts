@@ -40,6 +40,43 @@ export interface BillingStatus {
   freeLimitReached: boolean;
 }
 
+export interface PromoCode {
+  id: number;
+  code: string;
+  discount_type: 'percent' | 'fixed';
+  discount_value: number;
+  applies_to_plan: PlanId | null;
+  max_redemptions: number | null;
+  redeemed_count: number;
+  active: boolean;
+  expires_at: string | null;
+  created_at: string;
+}
+
+export interface AdminStats {
+  totalUsers: number;
+  planBreakdown: Record<string, number>;
+  totalPrd: number;
+  totalRevenue: number;
+  recentInterest: Array<{
+    email: string;
+    plan: string;
+    billing_cycle: string;
+    promo_code: string | null;
+    created_at: string;
+  }>;
+  recentPayments: Array<{
+    email: string;
+    plan: string;
+    billing_cycle: string;
+    amount: number;
+    status: string;
+    promo_code: string | null;
+    created_at: string;
+    paid_at: string | null;
+  }>;
+}
+
 export type InterviewGroupIndex = 1 | 2 | 3 | 4 | 5 | 6;
 
 export type ResultTab = 

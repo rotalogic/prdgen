@@ -225,6 +225,42 @@ const PLAN_LABELS: Record<string, string> = {
   pro: "Pro",
 };
 
+// Solo/small-team ownership check — no role table, just a short allowlist of
+// emails that get access to /api/admin/*.
+const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || "")
+  .split(",")
+  .map((s) => s.trim().toLowerCase())
+  .filter(Boolean);
+function isAdminEmail(email: string | undefined | null) {
+  return !!email && ADMIN_EMAILS.includes(email.toLowerCase());
+}
+
+// Looks up a promo code and returns the discounted amount, or an error
+// message if the code doesn't apply. Never trusts the client's own math.
+async function applyPromoCode(code: string, plan: string, amount: number): Promise<{ amount: number } | { error: string }> {
+  const result = await pool.query(
+    `SELECT discount_type, discount_value, applies_to_plan, max_redemptions, redeemed_count
+     FROM promo_codes
+     WHERE UPPER(code) = UPPER($1) AND active = true
+       AND (expires_at IS NULL OR expires_at > now())`,
+    [code]
+  );
+  const promo = result.rows[0];
+  if (!promo) {
+    return { error: "Kode promo tidak valid atau sudah kadaluwarsa." };
+  }
+  if (promo.applies_to_plan && promo.applies_to_plan !== plan) {
+    return { error: "Kode promo tidak berlaku untuk paket ini." };
+  }
+  if (promo.max_redemptions != null && promo.redeemed_count >= promo.max_redemptions) {
+    return { error: "Kode promo sudah mencapai batas penggunaan." };
+  }
+  const discounted = promo.discount_type === "percent"
+    ? amount - Math.round((amount * promo.discount_value) / 100)
+    : amount - promo.discount_value;
+  return { amount: Math.max(0, discounted) };
+}
+
 // Creates a Pakasir payment link scoped to this one checkout attempt and
 // records it as 'pending' — the webhook below is what actually flips it to
 // 'paid' and upgrades the user's plan.
@@ -242,10 +278,18 @@ app.post("/api/checkout/pakasir", async (req, res) => {
       return res.status(400).json({ error: "Paket tidak dikenali." });
     }
     const cycle = billingCycle === "3_bulan" ? "3_bulan" : "1_bulan";
-    const amount = PLAN_PRICES_MONTHLY[plan] * (cycle === "3_bulan" ? 3 : 1);
+    let amount = PLAN_PRICES_MONTHLY[plan] * (cycle === "3_bulan" ? 3 : 1);
     const cleanPromoCode = typeof promoCode === "string" && promoCode.trim()
       ? promoCode.trim().slice(0, 40)
       : null;
+
+    if (cleanPromoCode) {
+      const promoResult = await applyPromoCode(cleanPromoCode, plan, amount);
+      if ("error" in promoResult) {
+        return res.status(400).json({ error: promoResult.error });
+      }
+      amount = promoResult.amount;
+    }
 
     const pakasirBase = process.env.PAKASIR_API_BASE || "https://app.pakasir.com/api/v2";
     const slug = process.env.PAKASIR_SLUG;
@@ -318,7 +362,7 @@ app.post("/api/webhooks/pakasir", async (req, res) => {
     }
 
     const txnResult = await pool.query(
-      `SELECT id, user_id, plan, amount, status, pakasir_txn_id FROM payment_transactions WHERE pakasir_order_id = $1`,
+      `SELECT id, user_id, plan, amount, status, pakasir_txn_id, promo_code FROM payment_transactions WHERE pakasir_order_id = $1`,
       [order_id]
     );
     const txn = txnResult.rows[0];
@@ -360,6 +404,12 @@ app.post("/api/webhooks/pakasir", async (req, res) => {
        ON CONFLICT (user_id) DO UPDATE SET plan = excluded.plan, updated_at = now()`,
       [txn.user_id, txn.plan]
     );
+    if (txn.promo_code) {
+      await pool.query(
+        `UPDATE promo_codes SET redeemed_count = redeemed_count + 1 WHERE UPPER(code) = UPPER($1)`,
+        [txn.promo_code]
+      );
+    }
     res.status(200).json({ received: true });
   } catch (error) {
     console.error("[pakasir-webhook] Failed to process webhook:", error);
@@ -390,6 +440,166 @@ app.get("/api/checkout/pakasir/status/:id", async (req, res) => {
   } catch (error) {
     console.error("[checkout] Failed to load transaction status:", error);
     res.status(503).json({ error: "Gagal memuat status transaksi." });
+  }
+});
+
+// Lets the client know whether to show the Admin nav link, without ever
+// exposing the ADMIN_EMAILS allowlist itself.
+app.get("/api/admin/check", async (req, res) => {
+  try {
+    const session = await auth.api.getSession({ headers: fromNodeHeaders(req.headers) });
+    res.json({ isAdmin: !!session && isAdminEmail(session.user.email) });
+  } catch (error) {
+    console.error("[admin] Failed check:", error);
+    res.json({ isAdmin: false });
+  }
+});
+
+async function requireAdmin(req: any, res: any): Promise<{ userId: string } | null> {
+  const session = await auth.api.getSession({ headers: fromNodeHeaders(req.headers) });
+  if (!session || !isAdminEmail(session.user.email)) {
+    res.status(403).json({ error: "Akses ditolak." });
+    return null;
+  }
+  return { userId: session.user.id };
+}
+
+// Business stats for the owner: signups, plan breakdown, revenue, and the
+// leads/payments to follow up on manually.
+app.get("/api/admin/stats", async (req, res) => {
+  try {
+    if (!(await requireAdmin(req, res))) return;
+
+    const [
+      totalUsersResult,
+      planBreakdownResult,
+      totalPrdResult,
+      revenueResult,
+      recentInterestResult,
+      recentPaymentsResult,
+    ] = await Promise.all([
+      pool.query(`SELECT COUNT(*)::int AS count FROM "user"`),
+      pool.query(`SELECT plan, COUNT(*)::int AS count FROM user_plans GROUP BY plan`),
+      pool.query(`SELECT COUNT(*)::int AS count FROM prd_documents`),
+      pool.query(`SELECT COALESCE(SUM(amount), 0)::int AS total FROM payment_transactions WHERE status = 'paid'`),
+      pool.query(
+        `SELECT ui.plan, ui.billing_cycle, ui.promo_code, ui.created_at, u.email
+         FROM upgrade_interest ui JOIN "user" u ON u.id = ui.user_id
+         ORDER BY ui.created_at DESC LIMIT 20`
+      ),
+      pool.query(
+        `SELECT pt.plan, pt.billing_cycle, pt.amount, pt.status, pt.promo_code, pt.created_at, pt.paid_at, u.email
+         FROM payment_transactions pt JOIN "user" u ON u.id = pt.user_id
+         ORDER BY pt.created_at DESC LIMIT 20`
+      ),
+    ]);
+
+    const paidUsers = planBreakdownResult.rows.reduce((sum, r) => sum + r.count, 0);
+    const planBreakdown = planBreakdownResult.rows.reduce(
+      (acc, r) => ({ ...acc, [r.plan]: r.count }),
+      {} as Record<string, number>
+    );
+    planBreakdown.free = totalUsersResult.rows[0].count - paidUsers;
+
+    res.json({
+      totalUsers: totalUsersResult.rows[0].count,
+      planBreakdown,
+      totalPrd: totalPrdResult.rows[0].count,
+      totalRevenue: revenueResult.rows[0].total,
+      recentInterest: recentInterestResult.rows,
+      recentPayments: recentPaymentsResult.rows,
+    });
+  } catch (error) {
+    console.error("[admin] Failed to load stats:", error);
+    res.status(503).json({ error: "Gagal memuat statistik." });
+  }
+});
+
+app.get("/api/admin/promo-codes", async (req, res) => {
+  try {
+    if (!(await requireAdmin(req, res))) return;
+    const result = await pool.query(`SELECT * FROM promo_codes ORDER BY created_at DESC`);
+    res.json({ promoCodes: result.rows });
+  } catch (error) {
+    console.error("[admin] Failed to list promo codes:", error);
+    res.status(503).json({ error: "Gagal memuat kode promo." });
+  }
+});
+
+app.post("/api/admin/promo-codes", async (req, res) => {
+  try {
+    if (!(await requireAdmin(req, res))) return;
+    const { code, discountType, discountValue, appliesToPlan, maxRedemptions, expiresAt } = req.body || {};
+    const cleanCode = typeof code === "string" ? code.trim().toUpperCase().slice(0, 40) : "";
+    if (!cleanCode) {
+      return res.status(400).json({ error: "Kode wajib diisi." });
+    }
+    if (discountType !== "percent" && discountType !== "fixed") {
+      return res.status(400).json({ error: "Tipe diskon tidak dikenali." });
+    }
+    const value = Number(discountValue);
+    if (!Number.isInteger(value) || value <= 0 || (discountType === "percent" && value > 100)) {
+      return res.status(400).json({ error: "Nilai diskon tidak valid." });
+    }
+    if (appliesToPlan && !Object.prototype.hasOwnProperty.call(PLAN_PRICES_MONTHLY, appliesToPlan)) {
+      return res.status(400).json({ error: "Paket tidak dikenali." });
+    }
+    const result = await pool.query(
+      `INSERT INTO promo_codes (code, discount_type, discount_value, applies_to_plan, max_redemptions, expires_at)
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+      [
+        cleanCode,
+        discountType,
+        value,
+        appliesToPlan || null,
+        maxRedemptions ? Number(maxRedemptions) : null,
+        expiresAt || null,
+      ]
+    );
+    res.status(201).json({ promoCode: result.rows[0] });
+  } catch (error: any) {
+    if (error?.code === "23505") {
+      return res.status(409).json({ error: "Kode promo ini sudah ada." });
+    }
+    console.error("[admin] Failed to create promo code:", error);
+    res.status(503).json({ error: "Gagal membuat kode promo." });
+  }
+});
+
+app.patch("/api/admin/promo-codes/:id", async (req, res) => {
+  try {
+    if (!(await requireAdmin(req, res))) return;
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id)) {
+      return res.status(400).json({ error: "ID tidak valid." });
+    }
+    const { active } = req.body || {};
+    const result = await pool.query(
+      `UPDATE promo_codes SET active = $1 WHERE id = $2 RETURNING *`,
+      [!!active, id]
+    );
+    if (!result.rows[0]) {
+      return res.status(404).json({ error: "Kode promo tidak ditemukan." });
+    }
+    res.json({ promoCode: result.rows[0] });
+  } catch (error) {
+    console.error("[admin] Failed to update promo code:", error);
+    res.status(503).json({ error: "Gagal memperbarui kode promo." });
+  }
+});
+
+app.delete("/api/admin/promo-codes/:id", async (req, res) => {
+  try {
+    if (!(await requireAdmin(req, res))) return;
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id)) {
+      return res.status(400).json({ error: "ID tidak valid." });
+    }
+    await pool.query(`DELETE FROM promo_codes WHERE id = $1`, [id]);
+    res.status(204).end();
+  } catch (error) {
+    console.error("[admin] Failed to delete promo code:", error);
+    res.status(503).json({ error: "Gagal menghapus kode promo." });
   }
 });
 

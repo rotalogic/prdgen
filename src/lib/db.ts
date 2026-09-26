@@ -87,5 +87,21 @@ export async function ensureAppTables() {
     CREATE INDEX IF NOT EXISTS idx_payment_transactions_user_id ON payment_transactions(user_id);
     CREATE INDEX IF NOT EXISTS idx_payment_transactions_pakasir_order_id ON payment_transactions(pakasir_order_id);
     DROP INDEX IF EXISTS idx_payment_transactions_mayar_link_id;
+
+    -- Real discount codes, checked and applied server-side at checkout
+    -- (server.ts /api/checkout/pakasir) — unlike payment_transactions.promo_code,
+    -- which is just a record of what the customer typed.
+    CREATE TABLE IF NOT EXISTS promo_codes (
+      id SERIAL PRIMARY KEY,
+      code TEXT NOT NULL UNIQUE,
+      discount_type TEXT NOT NULL,
+      discount_value INTEGER NOT NULL,
+      applies_to_plan TEXT,
+      max_redemptions INTEGER,
+      redeemed_count INTEGER NOT NULL DEFAULT 0,
+      active BOOLEAN NOT NULL DEFAULT true,
+      expires_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
   `);
 }

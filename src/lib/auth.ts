@@ -14,6 +14,9 @@ export const auth = betterAuth({
   database: pool,
   secret: process.env.BETTER_AUTH_SECRET,
   baseURL: process.env.BETTER_AUTH_URL || process.env.APP_URL,
+  // The admin panel lives on its own subdomain (separate origin, separate
+  // login — see src/AdminApp.tsx) and needs its own auth requests trusted.
+  trustedOrigins: [process.env.APP_URL, process.env.ADMIN_APP_URL].filter(Boolean) as string[],
   emailAndPassword: {
     enabled: true,
     minPasswordLength: 6,
