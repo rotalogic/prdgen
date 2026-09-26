@@ -103,5 +103,38 @@ export async function ensureAppTables() {
       expires_at TIMESTAMPTZ,
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
+
+    -- Records admin-panel actions (promo codes, settings, content) for
+    -- accountability. Not a general request log — only mutations made
+    -- through /api/admin/*.
+    CREATE TABLE IF NOT EXISTS audit_log (
+      id SERIAL PRIMARY KEY,
+      actor_email TEXT NOT NULL,
+      action TEXT NOT NULL,
+      resource TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    -- Single-row table (id is always 1) for the handful of platform-wide
+    -- settings the admin panel exposes.
+    CREATE TABLE IF NOT EXISTS app_settings (
+      id INTEGER PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+      platform_name TEXT NOT NULL DEFAULT 'PRD Generator',
+      support_email TEXT NOT NULL DEFAULT 'support@rotalogic.id',
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    INSERT INTO app_settings (id) VALUES (1) ON CONFLICT (id) DO NOTHING;
+
+    -- Internal-only content/announcement list — nothing reads this on the
+    -- customer-facing site yet, it's a planning list for the admin panel.
+    CREATE TABLE IF NOT EXISTS admin_content_items (
+      id SERIAL PRIMARY KEY,
+      title TEXT NOT NULL,
+      type TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'draft',
+      created_by TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
   `);
 }

@@ -7,6 +7,14 @@
   --font-sans: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   --font-display: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  /* Admin Panel design tokens (admin.html entry only) */
+  --color-background: #070A12;
+  --color-card: #101626;
+  --color-border: #1e293b;
+  --color-accent: #F2542D;
+  --color-primary: #ffffff;
+  --color-secondary: #94a3b8;
 }
 
 /* Single-family typography: JetBrains Mono everywhere. Body copy gets extra

@@ -455,13 +455,37 @@ app.get("/api/admin/check", async (req, res) => {
   }
 });
 
-async function requireAdmin(req: any, res: any): Promise<{ userId: string } | null> {
+async function requireAdmin(req: any, res: any): Promise<{ userId: string; email: string } | null> {
   const session = await auth.api.getSession({ headers: fromNodeHeaders(req.headers) });
   if (!session || !isAdminEmail(session.user.email)) {
     res.status(403).json({ error: "Akses ditolak." });
     return null;
   }
-  return { userId: session.user.id };
+  return { userId: session.user.id, email: session.user.email };
+}
+
+// Records an admin-panel mutation for accountability. Best-effort — a
+// logging failure should never block the action itself.
+async function logAdminAction(actorEmail: string, action: string, resource: string) {
+  try {
+    await pool.query(
+      `INSERT INTO audit_log (actor_email, action, resource) VALUES ($1, $2, $3)`,
+      [actorEmail, action, resource]
+    );
+  } catch (error) {
+    console.error("[admin] Failed to write audit log:", error);
+  }
+}
+
+function csvEscape(value: unknown): string {
+  const s = value == null ? "" : String(value);
+  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+function toCsv(rows: Record<string, unknown>[], columns: string[]): string {
+  const header = columns.join(",");
+  const body = rows.map((row) => columns.map((c) => csvEscape(row[c])).join(",")).join("\n");
+  return `${header}\n${body}\n`;
 }
 
 // Business stats for the owner: signups, plan breakdown, revenue, and the
@@ -470,11 +494,14 @@ app.get("/api/admin/stats", async (req, res) => {
   try {
     if (!(await requireAdmin(req, res))) return;
 
+    const days = Math.min(Math.max(Number(req.query.days) || 30, 1), 365);
+
     const [
       totalUsersResult,
       planBreakdownResult,
       totalPrdResult,
       revenueResult,
+      revenueByDayResult,
       recentInterestResult,
       recentPaymentsResult,
     ] = await Promise.all([
@@ -483,14 +510,21 @@ app.get("/api/admin/stats", async (req, res) => {
       pool.query(`SELECT COUNT(*)::int AS count FROM prd_documents`),
       pool.query(`SELECT COALESCE(SUM(amount), 0)::int AS total FROM payment_transactions WHERE status = 'paid'`),
       pool.query(
+        `SELECT to_char(date_trunc('day', paid_at), 'YYYY-MM-DD') AS day, SUM(amount)::int AS total
+         FROM payment_transactions
+         WHERE status = 'paid' AND paid_at > now() - ($1 || ' days')::interval
+         GROUP BY 1 ORDER BY 1`,
+        [days]
+      ),
+      pool.query(
         `SELECT ui.plan, ui.billing_cycle, ui.promo_code, ui.created_at, u.email
          FROM upgrade_interest ui JOIN "user" u ON u.id = ui.user_id
-         ORDER BY ui.created_at DESC LIMIT 20`
+         ORDER BY ui.created_at DESC LIMIT 50`
       ),
       pool.query(
         `SELECT pt.plan, pt.billing_cycle, pt.amount, pt.status, pt.promo_code, pt.created_at, pt.paid_at, u.email
          FROM payment_transactions pt JOIN "user" u ON u.id = pt.user_id
-         ORDER BY pt.created_at DESC LIMIT 20`
+         ORDER BY pt.created_at DESC LIMIT 50`
       ),
     ]);
 
@@ -506,12 +540,43 @@ app.get("/api/admin/stats", async (req, res) => {
       planBreakdown,
       totalPrd: totalPrdResult.rows[0].count,
       totalRevenue: revenueResult.rows[0].total,
+      revenueByDay: revenueByDayResult.rows,
       recentInterest: recentInterestResult.rows,
       recentPayments: recentPaymentsResult.rows,
     });
   } catch (error) {
     console.error("[admin] Failed to load stats:", error);
     res.status(503).json({ error: "Gagal memuat statistik." });
+  }
+});
+
+// Real user list (email, plan, join date) — backs the Users/Subscriptions
+// modules. Subscriptions is just this filtered client-side (plan != free).
+app.get("/api/admin/users", async (req, res) => {
+  try {
+    if (!(await requireAdmin(req, res))) return;
+    const result = await pool.query(
+      `SELECT u.id, u.email, u."createdAt" AS created_at, COALESCE(up.plan, 'free') AS plan
+       FROM "user" u LEFT JOIN user_plans up ON up.user_id = u.id
+       ORDER BY u."createdAt" DESC LIMIT 200`
+    );
+    res.json({ users: result.rows });
+  } catch (error) {
+    console.error("[admin] Failed to list users:", error);
+    res.status(503).json({ error: "Gagal memuat daftar user." });
+  }
+});
+
+// Read-only view of who currently has admin access. There's no runtime
+// "invite" here on purpose — ADMIN_EMAILS is a server env var, so granting
+// access is genuinely an env-edit + restart, not a database write.
+app.get("/api/admin/admins", async (req, res) => {
+  try {
+    if (!(await requireAdmin(req, res))) return;
+    res.json({ emails: ADMIN_EMAILS });
+  } catch (error) {
+    console.error("[admin] Failed to list admins:", error);
+    res.status(503).json({ error: "Gagal memuat daftar admin." });
   }
 });
 
@@ -528,7 +593,8 @@ app.get("/api/admin/promo-codes", async (req, res) => {
 
 app.post("/api/admin/promo-codes", async (req, res) => {
   try {
-    if (!(await requireAdmin(req, res))) return;
+    const admin = await requireAdmin(req, res);
+    if (!admin) return;
     const { code, discountType, discountValue, appliesToPlan, maxRedemptions, expiresAt } = req.body || {};
     const cleanCode = typeof code === "string" ? code.trim().toUpperCase().slice(0, 40) : "";
     if (!cleanCode) {
@@ -556,6 +622,7 @@ app.post("/api/admin/promo-codes", async (req, res) => {
         expiresAt || null,
       ]
     );
+    await logAdminAction(admin.email, "CREATE_PROMO", cleanCode);
     res.status(201).json({ promoCode: result.rows[0] });
   } catch (error: any) {
     if (error?.code === "23505") {
@@ -568,7 +635,8 @@ app.post("/api/admin/promo-codes", async (req, res) => {
 
 app.patch("/api/admin/promo-codes/:id", async (req, res) => {
   try {
-    if (!(await requireAdmin(req, res))) return;
+    const admin = await requireAdmin(req, res);
+    if (!admin) return;
     const id = Number(req.params.id);
     if (!Number.isInteger(id)) {
       return res.status(400).json({ error: "ID tidak valid." });
@@ -581,6 +649,7 @@ app.patch("/api/admin/promo-codes/:id", async (req, res) => {
     if (!result.rows[0]) {
       return res.status(404).json({ error: "Kode promo tidak ditemukan." });
     }
+    await logAdminAction(admin.email, active ? "ACTIVATE_PROMO" : "DEACTIVATE_PROMO", result.rows[0].code);
     res.json({ promoCode: result.rows[0] });
   } catch (error) {
     console.error("[admin] Failed to update promo code:", error);
@@ -590,16 +659,312 @@ app.patch("/api/admin/promo-codes/:id", async (req, res) => {
 
 app.delete("/api/admin/promo-codes/:id", async (req, res) => {
   try {
-    if (!(await requireAdmin(req, res))) return;
+    const admin = await requireAdmin(req, res);
+    if (!admin) return;
     const id = Number(req.params.id);
     if (!Number.isInteger(id)) {
       return res.status(400).json({ error: "ID tidak valid." });
     }
+    const existing = await pool.query(`SELECT code FROM promo_codes WHERE id = $1`, [id]);
     await pool.query(`DELETE FROM promo_codes WHERE id = $1`, [id]);
+    if (existing.rows[0]) {
+      await logAdminAction(admin.email, "DELETE_PROMO", existing.rows[0].code);
+    }
     res.status(204).end();
   } catch (error) {
     console.error("[admin] Failed to delete promo code:", error);
     res.status(503).json({ error: "Gagal menghapus kode promo." });
+  }
+});
+
+// Daily PRD generations and signups — same date_trunc pattern as
+// revenueByDay in /api/admin/stats.
+app.get("/api/admin/analytics", async (req, res) => {
+  try {
+    if (!(await requireAdmin(req, res))) return;
+    const days = Math.min(Math.max(Number(req.query.days) || 30, 1), 365);
+
+    const [prdByDayResult, signupsByDayResult] = await Promise.all([
+      pool.query(
+        `SELECT to_char(date_trunc('day', created_at), 'YYYY-MM-DD') AS day, COUNT(*)::int AS count
+         FROM prd_documents WHERE created_at > now() - ($1 || ' days')::interval
+         GROUP BY 1 ORDER BY 1`,
+        [days]
+      ),
+      pool.query(
+        `SELECT to_char(date_trunc('day', "createdAt"), 'YYYY-MM-DD') AS day, COUNT(*)::int AS count
+         FROM "user" WHERE "createdAt" > now() - ($1 || ' days')::interval
+         GROUP BY 1 ORDER BY 1`,
+        [days]
+      ),
+    ]);
+    res.json({ prdByDay: prdByDayResult.rows, signupsByDay: signupsByDayResult.rows });
+  } catch (error) {
+    console.error("[admin] Failed to load analytics:", error);
+    res.status(503).json({ error: "Gagal memuat analitik." });
+  }
+});
+
+// CSV report exports — direct download, no intermediate JSON.
+app.get("/api/admin/reports/revenue.csv", async (req, res) => {
+  try {
+    if (!(await requireAdmin(req, res))) return;
+    const result = await pool.query(
+      `SELECT u.email, pt.plan, pt.billing_cycle, pt.amount, pt.status, pt.promo_code, pt.created_at, pt.paid_at
+       FROM payment_transactions pt JOIN "user" u ON u.id = pt.user_id ORDER BY pt.created_at DESC`
+    );
+    const csv = toCsv(result.rows, ["email", "plan", "billing_cycle", "amount", "status", "promo_code", "created_at", "paid_at"]);
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", "attachment; filename=revenue-report.csv");
+    res.send(csv);
+  } catch (error) {
+    console.error("[admin] Failed to export revenue report:", error);
+    res.status(503).json({ error: "Gagal membuat laporan." });
+  }
+});
+
+app.get("/api/admin/reports/users.csv", async (req, res) => {
+  try {
+    if (!(await requireAdmin(req, res))) return;
+    const result = await pool.query(
+      `SELECT u.email, COALESCE(up.plan, 'free') AS plan, u."createdAt" AS created_at
+       FROM "user" u LEFT JOIN user_plans up ON up.user_id = u.id ORDER BY u."createdAt" DESC`
+    );
+    const csv = toCsv(result.rows, ["email", "plan", "created_at"]);
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", "attachment; filename=user-growth-report.csv");
+    res.send(csv);
+  } catch (error) {
+    console.error("[admin] Failed to export user report:", error);
+    res.status(503).json({ error: "Gagal membuat laporan." });
+  }
+});
+
+app.get("/api/admin/reports/prd-usage.csv", async (req, res) => {
+  try {
+    if (!(await requireAdmin(req, res))) return;
+    const result = await pool.query(
+      `SELECT u.email, COUNT(pd.id)::int AS prd_count
+       FROM "user" u JOIN prd_documents pd ON pd.user_id = u.id
+       GROUP BY u.email ORDER BY prd_count DESC`
+    );
+    const csv = toCsv(result.rows, ["email", "prd_count"]);
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", "attachment; filename=prd-usage-report.csv");
+    res.send(csv);
+  } catch (error) {
+    console.error("[admin] Failed to export PRD usage report:", error);
+    res.status(503).json({ error: "Gagal membuat laporan." });
+  }
+});
+
+app.get("/api/admin/reports/promo-performance.csv", async (req, res) => {
+  try {
+    if (!(await requireAdmin(req, res))) return;
+    const result = await pool.query(`SELECT * FROM promo_codes ORDER BY redeemed_count DESC`);
+    const csv = toCsv(result.rows, ["code", "discount_type", "discount_value", "applies_to_plan", "redeemed_count", "max_redemptions", "active", "created_at"]);
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", "attachment; filename=promo-performance-report.csv");
+    res.send(csv);
+  } catch (error) {
+    console.error("[admin] Failed to export promo report:", error);
+    res.status(503).json({ error: "Gagal membuat laporan." });
+  }
+});
+
+app.get("/api/admin/audit-logs", async (req, res) => {
+  try {
+    if (!(await requireAdmin(req, res))) return;
+    const result = await pool.query(`SELECT * FROM audit_log ORDER BY created_at DESC LIMIT 100`);
+    res.json({ logs: result.rows });
+  } catch (error) {
+    console.error("[admin] Failed to load audit logs:", error);
+    res.status(503).json({ error: "Gagal memuat audit log." });
+  }
+});
+
+app.get("/api/admin/settings", async (req, res) => {
+  try {
+    if (!(await requireAdmin(req, res))) return;
+    const result = await pool.query(`SELECT * FROM app_settings WHERE id = 1`);
+    res.json({ settings: result.rows[0] });
+  } catch (error) {
+    console.error("[admin] Failed to load settings:", error);
+    res.status(503).json({ error: "Gagal memuat pengaturan." });
+  }
+});
+
+app.put("/api/admin/settings", async (req, res) => {
+  try {
+    const admin = await requireAdmin(req, res);
+    if (!admin) return;
+    const { platformName, supportEmail } = req.body || {};
+    if (!platformName || !supportEmail) {
+      return res.status(400).json({ error: "Nama platform dan email support wajib diisi." });
+    }
+    const result = await pool.query(
+      `UPDATE app_settings SET platform_name = $1, support_email = $2, updated_at = now() WHERE id = 1 RETURNING *`,
+      [String(platformName).slice(0, 200), String(supportEmail).slice(0, 200)]
+    );
+    await logAdminAction(admin.email, "UPDATE_SETTINGS", "app_settings");
+    res.json({ settings: result.rows[0] });
+  } catch (error) {
+    console.error("[admin] Failed to update settings:", error);
+    res.status(503).json({ error: "Gagal menyimpan pengaturan." });
+  }
+});
+
+// Lightweight, honest health checks — no live Pakasir call here (that's
+// what Finance's on-demand reconcile is for), just what's cheap to know.
+app.get("/api/admin/integrations", async (req, res) => {
+  try {
+    if (!(await requireAdmin(req, res))) return;
+    const start = Date.now();
+    await pool.query(`SELECT 1`);
+    const dbLatencyMs = Date.now() - start;
+
+    res.json({
+      integrations: [
+        { name: "Database", status: "online", detail: `${dbLatencyMs}ms` },
+        {
+          name: "Pakasir",
+          status: process.env.PAKASIR_API_KEY && process.env.PAKASIR_SLUG ? "configured" : "not_configured",
+          detail: process.env.PAKASIR_SLUG || "-",
+        },
+        { name: "Better Auth", status: "online", detail: "-" },
+      ],
+    });
+  } catch (error) {
+    console.error("[admin] Failed to check integrations:", error);
+    res.status(503).json({ error: "Gagal memeriksa status integrasi." });
+  }
+});
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// On-demand reconciliation against Pakasir's own transaction-status API.
+// Deliberately sequential with a ~4s gap per Pakasir's documented rate
+// limit — this is slow by design, not a bug.
+app.post("/api/admin/finance/reconcile", async (req, res) => {
+  try {
+    if (!(await requireAdmin(req, res))) return;
+    if (!process.env.PAKASIR_API_KEY || !process.env.PAKASIR_SLUG) {
+      return res.status(503).json({ error: "Pakasir belum dikonfigurasi." });
+    }
+    const limit = Math.min(Math.max(Number(req.query.limit) || 10, 1), 15);
+    const pakasirBase = process.env.PAKASIR_API_BASE || "https://app.pakasir.com/api/v2";
+    const slug = process.env.PAKASIR_SLUG;
+
+    const txnResult = await pool.query(
+      `SELECT id, pakasir_order_id, pakasir_txn_id, amount FROM payment_transactions
+       WHERE status = 'paid' AND pakasir_txn_id IS NOT NULL
+       ORDER BY paid_at DESC LIMIT $1`,
+      [limit]
+    );
+
+    const results = [];
+    for (let i = 0; i < txnResult.rows.length; i++) {
+      const txn = txnResult.rows[i];
+      try {
+        const pakasirRes = await fetch(`${pakasirBase}/transaction-status/${slug}/${txn.pakasir_txn_id}`, {
+          headers: { "X-Api-Key": process.env.PAKASIR_API_KEY as string },
+        });
+        const pakasirData = pakasirRes.ok ? await pakasirRes.json() : null;
+        results.push({
+          orderId: txn.pakasir_order_id,
+          recordedAmount: txn.amount,
+          pakasirAmount: pakasirData?.amount ?? null,
+          pakasirStatus: pakasirData?.status ?? "unknown",
+          match: pakasirData ? Number(pakasirData.amount) === txn.amount : false,
+        });
+      } catch {
+        results.push({ orderId: txn.pakasir_order_id, recordedAmount: txn.amount, pakasirAmount: null, pakasirStatus: "error", match: false });
+      }
+      if (i < txnResult.rows.length - 1) await sleep(4100);
+    }
+    res.json({ results });
+  } catch (error) {
+    console.error("[admin] Failed to reconcile finance:", error);
+    res.status(503).json({ error: "Gagal menjalankan rekonsiliasi." });
+  }
+});
+
+app.get("/api/admin/content", async (req, res) => {
+  try {
+    if (!(await requireAdmin(req, res))) return;
+    const result = await pool.query(`SELECT * FROM admin_content_items ORDER BY created_at DESC`);
+    res.json({ items: result.rows });
+  } catch (error) {
+    console.error("[admin] Failed to list content:", error);
+    res.status(503).json({ error: "Gagal memuat daftar konten." });
+  }
+});
+
+app.post("/api/admin/content", async (req, res) => {
+  try {
+    const admin = await requireAdmin(req, res);
+    if (!admin) return;
+    const { title, type } = req.body || {};
+    const cleanTitle = typeof title === "string" ? title.trim().slice(0, 200) : "";
+    if (!cleanTitle || !type) {
+      return res.status(400).json({ error: "Judul dan tipe wajib diisi." });
+    }
+    const result = await pool.query(
+      `INSERT INTO admin_content_items (title, type, created_by) VALUES ($1, $2, $3) RETURNING *`,
+      [cleanTitle, String(type).slice(0, 50), admin.email]
+    );
+    await logAdminAction(admin.email, "CREATE_CONTENT", cleanTitle);
+    res.status(201).json({ item: result.rows[0] });
+  } catch (error) {
+    console.error("[admin] Failed to create content:", error);
+    res.status(503).json({ error: "Gagal membuat konten." });
+  }
+});
+
+app.patch("/api/admin/content/:id", async (req, res) => {
+  try {
+    const admin = await requireAdmin(req, res);
+    if (!admin) return;
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id)) {
+      return res.status(400).json({ error: "ID tidak valid." });
+    }
+    const { status } = req.body || {};
+    if (status !== "draft" && status !== "published") {
+      return res.status(400).json({ error: "Status tidak dikenali." });
+    }
+    const result = await pool.query(
+      `UPDATE admin_content_items SET status = $1, updated_at = now() WHERE id = $2 RETURNING *`,
+      [status, id]
+    );
+    if (!result.rows[0]) {
+      return res.status(404).json({ error: "Konten tidak ditemukan." });
+    }
+    await logAdminAction(admin.email, "UPDATE_CONTENT_STATUS", result.rows[0].title);
+    res.json({ item: result.rows[0] });
+  } catch (error) {
+    console.error("[admin] Failed to update content:", error);
+    res.status(503).json({ error: "Gagal memperbarui konten." });
+  }
+});
+
+app.delete("/api/admin/content/:id", async (req, res) => {
+  try {
+    const admin = await requireAdmin(req, res);
+    if (!admin) return;
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id)) {
+      return res.status(400).json({ error: "ID tidak valid." });
+    }
+    const existing = await pool.query(`SELECT title FROM admin_content_items WHERE id = $1`, [id]);
+    await pool.query(`DELETE FROM admin_content_items WHERE id = $1`, [id]);
+    if (existing.rows[0]) {
+      await logAdminAction(admin.email, "DELETE_CONTENT", existing.rows[0].title);
+    }
+    res.status(204).end();
+  } catch (error) {
+    console.error("[admin] Failed to delete content:", error);
+    res.status(503).json({ error: "Gagal menghapus konten." });
   }
 });
 

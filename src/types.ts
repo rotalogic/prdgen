@@ -58,6 +58,7 @@ export interface AdminStats {
   planBreakdown: Record<string, number>;
   totalPrd: number;
   totalRevenue: number;
+  revenueByDay: Array<{ day: string; total: number }>;
   recentInterest: Array<{
     email: string;
     plan: string;
@@ -75,6 +76,57 @@ export interface AdminStats {
     created_at: string;
     paid_at: string | null;
   }>;
+}
+
+export interface AdminUser {
+  id: string;
+  email: string;
+  created_at: string;
+  plan: PlanId;
+}
+
+export interface AnalyticsData {
+  prdByDay: Array<{ day: string; count: number }>;
+  signupsByDay: Array<{ day: string; count: number }>;
+}
+
+export interface AuditLogEntry {
+  id: number;
+  actor_email: string;
+  action: string;
+  resource: string;
+  created_at: string;
+}
+
+export interface AppSettings {
+  id: number;
+  platform_name: string;
+  support_email: string;
+  updated_at: string;
+}
+
+export interface IntegrationStatus {
+  name: string;
+  status: 'online' | 'configured' | 'not_configured';
+  detail: string;
+}
+
+export interface ReconcileResult {
+  orderId: string;
+  recordedAmount: number;
+  pakasirAmount: number | null;
+  pakasirStatus: string;
+  match: boolean;
+}
+
+export interface ContentItem {
+  id: number;
+  title: string;
+  type: string;
+  status: 'draft' | 'published';
+  created_by: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export type InterviewGroupIndex = 1 | 2 | 3 | 4 | 5 | 6;
